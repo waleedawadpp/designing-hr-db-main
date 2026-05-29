@@ -29,12 +29,24 @@ export default function HomeScreen() {
     });
   }, [query, category]);
 
+  // إضافة عناصر فارغة لموازنة الصف الأخير حتى لا يتمدّد منتج وحيد على كامل العرض
+  const data = useMemo(() => {
+    if (numColumns <= 1) return filtered;
+    const remainder = filtered.length % numColumns;
+    if (remainder === 0) return filtered;
+    const fillers = Array.from({ length: numColumns - remainder }, (_, i) => ({
+      id: -(i + 1),
+      __filler: true as const,
+    }));
+    return [...filtered, ...(fillers as unknown as typeof filtered)];
+  }, [filtered, numColumns]);
+
   return (
     <View className="flex-1 bg-violet-50">
       <FlatList
         // key يجبر FlatList على إعادة التخطيط عند تغيّر عدد الأعمدة
         key={numColumns}
-        data={filtered}
+        data={data}
         keyExtractor={(item) => String(item.id)}
         numColumns={numColumns}
         columnWrapperStyle={
@@ -62,7 +74,14 @@ export default function HomeScreen() {
             </Text>
           </View>
         }
-        renderItem={({ item }) => <ProductCard product={item} />}
+        renderItem={({ item }) =>
+          (item as any).__filler ? (
+            // عنصر فارغ غير مرئي لموازنة الشبكة
+            <View className="flex-1" />
+          ) : (
+            <ProductCard product={item} />
+          )
+        }
         ListEmptyComponent={
           <View className="mt-20 items-center px-8">
             <Ionicons name="sad-outline" size={56} color="#C4B5FD" />
