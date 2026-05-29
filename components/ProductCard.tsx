@@ -50,7 +50,7 @@ export default function ProductCard({ product }: { product: Product }) {
         <View className="gap-2 p-3">
           <Text
             numberOfLines={2}
-            className="min-h-[40px] text-sm font-bold text-gray-800"
+            className="min-h-[40px] text-sm font-cairo-bold text-gray-800"
             style={{ textAlign: "right", writingDirection: "rtl" }}
           >
             {product.name}
@@ -58,7 +58,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
           <View className="flex-row items-center justify-between">
             <Text
-              className="text-sm font-extrabold"
+              className="text-sm font-cairo-extrabold"
               style={{ color: PRIMARY_COLOR }}
             >
               {formatPrice(product.price)}
@@ -77,7 +77,7 @@ export default function ProductCard({ product }: { product: Product }) {
               className="flex-row items-center justify-center gap-1.5 py-2.5"
             >
               <Ionicons name="add-circle-outline" size={18} color="#fff" />
-              <Text className="text-sm font-bold text-white">
+              <Text className="text-sm font-cairo-bold text-white">
                 {qty > 0 ? `في السلة (${qty})` : "أضف للسلة"}
               </Text>
             </LinearGradient>

@@ -24,10 +24,10 @@ export default function Header() {
             <Ionicons name="wine-outline" size={26} color="#fff" />
           </View>
           <View>
-            <Text className="text-xl font-extrabold text-white" style={{ writingDirection: "rtl" }}>
+            <Text className="text-xl font-cairo-extrabold text-white" style={{ writingDirection: "rtl" }}>
               {STORE_NAME}
             </Text>
-            <Text className="text-xs text-white/80" style={{ writingDirection: "rtl" }}>
+            <Text className="text-xs font-cairo text-white/80" style={{ writingDirection: "rtl" }}>
               مشروبات منعشة توصل لباب بيتك
             </Text>
           </View>

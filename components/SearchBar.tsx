@@ -17,7 +17,7 @@ export default function SearchBar({ value, onChange }: Props) {
         onChangeText={onChange}
         placeholder="ابحث عن مشروبك المفضل..."
         placeholderTextColor="#9CA3AF"
-        className="flex-1 py-3 text-base text-gray-800"
+        className="flex-1 py-3 text-base font-cairo text-gray-800"
         style={{ textAlign: "right", writingDirection: "rtl" }}
         returnKeyType="search"
       />

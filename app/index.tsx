@@ -64,11 +64,11 @@ export default function HomeScreen() {
               onSelect={setCategory}
             />
             <Text
-              className="mt-5 px-4 text-lg font-extrabold text-gray-800"
+              className="mt-5 px-4 text-lg font-cairo-extrabold text-gray-800"
               style={{ textAlign: "right", writingDirection: "rtl" }}
             >
               {category === "الكل" ? "كل المنتجات" : category}
-              <Text className="text-sm font-normal text-gray-400">
+              <Text className="text-sm font-cairo text-gray-400">
                 {"  "}({filtered.length})
               </Text>
             </Text>
@@ -85,7 +85,7 @@ export default function HomeScreen() {
         ListEmptyComponent={
           <View className="mt-20 items-center px-8">
             <Ionicons name="sad-outline" size={56} color="#C4B5FD" />
-            <Text className="mt-3 text-center text-base text-gray-500">
+            <Text className="mt-3 text-center text-base font-cairo text-gray-500">
               لا توجد منتجات مطابقة لبحثك
             </Text>
           </View>

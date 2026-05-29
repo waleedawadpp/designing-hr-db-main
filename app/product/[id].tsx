@@ -22,7 +22,7 @@ export default function ProductDetailsScreen() {
         <TopBar title="المنتج غير موجود" showCart={false} />
         <View className="flex-1 items-center justify-center px-8">
           <Ionicons name="alert-circle-outline" size={56} color="#C4B5FD" />
-          <Text className="mt-3 text-center text-base text-gray-500">
+          <Text className="mt-3 text-center text-base font-cairo text-gray-500">
             عذراً، هذا المنتج غير متوفر.
           </Text>
         </View>
@@ -57,7 +57,7 @@ export default function ProductDetailsScreen() {
               style={{ backgroundColor: "#F3E8FF" }}
             >
               <Text
-                className="text-xs font-bold"
+                className="text-xs font-cairo-bold"
                 style={{ color: PRIMARY_COLOR }}
               >
                 {product.category}
@@ -67,7 +67,7 @@ export default function ProductDetailsScreen() {
 
           {/* الاسم */}
           <Text
-            className="text-2xl font-extrabold text-gray-900"
+            className="text-2xl font-cairo-extrabold text-gray-900"
             style={{ textAlign: "right", writingDirection: "rtl" }}
           >
             {product.name}
@@ -75,7 +75,7 @@ export default function ProductDetailsScreen() {
 
           {/* السعر */}
           <Text
-            className="text-xl font-extrabold"
+            className="text-xl font-cairo-extrabold"
             style={{ color: PRIMARY_COLOR, textAlign: "right" }}
           >
             {formatPrice(product.price)}
@@ -83,7 +83,7 @@ export default function ProductDetailsScreen() {
 
           {/* الوصف */}
           <Text
-            className="mt-1 text-base leading-7 text-gray-600"
+            className="mt-1 text-base font-cairo leading-7 text-gray-600"
             style={{ textAlign: "right", writingDirection: "rtl" }}
           >
             {DEFAULT_DESCRIPTION}
@@ -107,7 +107,7 @@ export default function ProductDetailsScreen() {
             className="flex-row items-center justify-center gap-2 py-4"
           >
             <Ionicons name="cart-outline" size={22} color="#fff" />
-            <Text className="text-base font-extrabold text-white">
+            <Text className="text-base font-cairo-extrabold text-white">
               {qty > 0 ? `أضف للسلة (${qty} في السلة)` : "أضف للسلة"}
             </Text>
           </LinearGradient>

@@ -45,10 +45,10 @@ export default function CartScreen() {
         <TopBar title="سلة المشتريات" showCart={false} />
         <View className="flex-1 items-center justify-center px-8">
           <Ionicons name="cart-outline" size={72} color="#C4B5FD" />
-          <Text className="mt-4 text-center text-lg font-bold text-gray-600">
+          <Text className="mt-4 text-center text-lg font-cairo-bold text-gray-600">
             سلتك فارغة
           </Text>
-          <Text className="mt-1 text-center text-sm text-gray-400">
+          <Text className="mt-1 text-center text-sm font-cairo text-gray-400">
             تصفّح المنتجات وأضف ما يعجبك
           </Text>
           <Pressable
@@ -61,7 +61,7 @@ export default function CartScreen() {
               end={{ x: 1, y: 0 }}
               className="px-8 py-3"
             >
-              <Text className="text-base font-bold text-white">
+              <Text className="text-base font-cairo-bold text-white">
                 تصفّح المنتجات
               </Text>
             </LinearGradient>
@@ -86,7 +86,7 @@ export default function CartScreen() {
             className="mt-2 flex-row items-center justify-center gap-1.5 py-2 active:opacity-70"
           >
             <Ionicons name="trash-outline" size={18} color="#EF4444" />
-            <Text className="text-sm font-bold text-rose-500">
+            <Text className="text-sm font-cairo-bold text-rose-500">
               إفراغ السلة
             </Text>
           </Pressable>
@@ -104,14 +104,14 @@ export default function CartScreen() {
             <View className="flex-1 gap-2">
               <Text
                 numberOfLines={2}
-                className="text-sm font-bold text-gray-800"
+                className="text-sm font-cairo-bold text-gray-800"
                 style={{ textAlign: "right", writingDirection: "rtl" }}
               >
                 {item.product.name}
               </Text>
 
               <Text
-                className="text-sm font-extrabold"
+                className="text-sm font-cairo-extrabold"
                 style={{ color: PRIMARY_COLOR, textAlign: "right" }}
               >
                 {formatPrice(item.product.price)}
@@ -139,9 +139,9 @@ export default function CartScreen() {
       {/* ملخّص الطلب وزر الإتمام */}
       <View className="absolute bottom-0 left-0 right-0 gap-3 rounded-t-[28px] border-t border-gray-100 bg-white px-5 pb-8 pt-5 shadow-2xl">
         <View className="flex-row items-center justify-between">
-          <Text className="text-base text-gray-500">المجموع الكلي</Text>
+          <Text className="text-base font-cairo text-gray-500">المجموع الكلي</Text>
           <Text
-            className="text-2xl font-extrabold"
+            className="text-2xl font-cairo-extrabold"
             style={{ color: PRIMARY_COLOR }}
           >
             {formatTotal(total)}
@@ -159,13 +159,13 @@ export default function CartScreen() {
             className="flex-row items-center justify-center gap-2 py-4"
           >
             <Ionicons name="logo-whatsapp" size={24} color="#fff" />
-            <Text className="text-base font-extrabold text-white">
+            <Text className="text-base font-cairo-extrabold text-white">
               إتمام الطلب عبر واتساب
             </Text>
           </LinearGradient>
         </Pressable>
 
-        <Text className="text-center text-xs text-gray-400">
+        <Text className="text-center text-xs font-cairo text-gray-400">
           سيتم فتح واتساب برسالة جاهزة تحتوي تفاصيل طلبك
         </Text>
       </View>

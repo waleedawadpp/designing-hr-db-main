@@ -8,6 +8,13 @@ module.exports = {
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
+      // عائلات خط Cairo العربي بأوزانها (تُحمَّل في app/_layout.tsx)
+      fontFamily: {
+        cairo: ["Cairo_400Regular"],
+        "cairo-semibold": ["Cairo_600SemiBold"],
+        "cairo-bold": ["Cairo_700Bold"],
+        "cairo-extrabold": ["Cairo_800ExtraBold"],
+      },
       colors: {
         // اللون الأساسي للمتجر (متطابق مع config.ts)
         brand: {

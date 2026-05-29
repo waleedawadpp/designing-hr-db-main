@@ -35,7 +35,7 @@ export default function TopBar({ title, showCart = true }: Props) {
           <Ionicons name="chevron-forward" size={24} color="#fff" />
         </Pressable>
 
-        <Text className="flex-1 px-3 text-center text-lg font-extrabold text-white">
+        <Text className="flex-1 px-3 text-center text-lg font-cairo-extrabold text-white">
           {title}
         </Text>
 

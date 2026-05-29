@@ -26,7 +26,7 @@ export default function QtyStepper({
         <Ionicons name="remove" size={18} color={PRIMARY_COLOR} />
       </Pressable>
 
-      <Text className="min-w-[20px] text-center text-base font-bold text-gray-800">
+      <Text className="min-w-[20px] text-center text-base font-cairo-bold text-gray-800">
         {quantity}
       </Text>
 

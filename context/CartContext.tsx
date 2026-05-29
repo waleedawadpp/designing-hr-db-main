@@ -1,11 +1,14 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
-import { Product } from "../data/products";
+import { Product, PRODUCTS } from "../data/products";
 
 export type CartItem = {
   product: Product;
@@ -28,8 +31,47 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
 
+// مفتاح التخزين المحلي (AsyncStorage على الجوال، localStorage على الويب)
+const STORAGE_KEY = "@drinks_store_cart";
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  // نمنع الكتابة فوق البيانات المخزّنة قبل اكتمال تحميلها
+  const hydrated = useRef(false);
+
+  // تحميل السلة المحفوظة عند بدء التطبيق
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const saved: { id: number; quantity: number }[] = JSON.parse(raw);
+          const restored: CartItem[] = [];
+          for (const entry of saved) {
+            const product = PRODUCTS.find((p) => p.id === entry.id);
+            if (product && entry.quantity > 0) {
+              restored.push({ product, quantity: entry.quantity });
+            }
+          }
+          if (restored.length > 0) setItems(restored);
+        }
+      } catch {
+        // تجاهُل أي خطأ في القراءة والبدء بسلة فارغة
+      } finally {
+        hydrated.current = true;
+      }
+    })();
+  }, []);
+
+  // حفظ السلة عند كل تغيير (نخزّن المعرّف والكمية فقط)
+  useEffect(() => {
+    if (!hydrated.current) return;
+    const payload = items.map((i) => ({
+      id: i.product.id,
+      quantity: i.quantity,
+    }));
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload)).catch(() => {});
+  }, [items]);
 
   const addItem = useCallback((product: Product) => {
     setItems((prev) => {

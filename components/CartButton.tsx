@@ -25,7 +25,7 @@ export default function CartButton({ color = "#fff" }: { color?: string }) {
           className="absolute -top-1 -right-1 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1"
           style={{ height: 20 }}
         >
-          <Text className="text-[11px] font-bold text-white">{count}</Text>
+          <Text className="text-[11px] font-cairo-bold text-white">{count}</Text>
         </View>
       )}
     </Pressable>

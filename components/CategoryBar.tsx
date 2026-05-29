@@ -36,7 +36,7 @@ export default function CategoryBar({ categories, selected, onSelect }: Props) {
             }}
           >
             <Text
-              className="text-sm font-bold"
+              className="text-sm font-cairo-bold"
               style={{ color: active ? "#fff" : "#4B5563" }}
             >
               {cat}
