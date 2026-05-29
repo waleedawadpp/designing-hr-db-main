@@ -52,8 +52,9 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  // لا نعرض الواجهة قبل جاهزية الخطوط (إلا إذا فشل تحميلها فنكمل بخط النظام)
-  if (!fontsLoaded && !fontError) {
+  // على الجوال: ننتظر جاهزية الخطوط (شاشة البداية تغطّي الانتظار).
+  // على الويب: نعرض الواجهة فوراً بخط احتياطي ثم يحلّ خط Cairo محلّه.
+  if (Platform.OS !== "web" && !fontsLoaded && !fontError) {
     return null;
   }
 
