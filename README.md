@@ -1,51 +1,252 @@
-# Designing an HR Database
+# 🥤 متجر المشروبات — Drinks Store
 
-In this project, I have designed, built, and populated a database for the Human Resources (HR) Department at the imaginary Tech ABC Corp, a video game company. This project will start with a request from the HR Manager. From there, I had to design a database using the foundational principals of data architecture that is best suited to the department's needs. This project is important, as it is a scaled-down simulation of the kind of real-world assignments data architects work on every day.
+متجر مشروبات عصري بقاعدة كود **واحدة** تعمل على **الويب + أندرويد + آيفون** معاً،
+مبني بـ **Expo + Expo Router + TypeScript + NativeWind (Tailwind)**.
 
-## Business Scenario
-Tech ABC Corp saw explosive growth with a sudden appearance onto the gaming scene with its new AI-powered video game console. As a result, they have gone from a small 10 person operation to 200 employees and 5 locations in under a year. HR is having trouble keeping up with the growth since they are still maintaining employee information in a spreadsheet. While that worked for ten employees, it has become increasingly cumbersome to manage as the company expands.
+- بدون دفع إلكتروني، بدون تسجيل دخول، بدون لوحة تحكم.
+- الزبون يتصفّح المنتجات ويرسل طلبه **مباشرة عبر واتساب**.
+- دعم كامل للعربية والاتجاه من اليمين لليسار (RTL) **بخط Cairo** عربي واضح.
+- بيانات المنتجات محلية في ملف واحد — بدون خادم أو قاعدة بيانات.
+- **حفظ السلة تلقائياً** على الجهاز (تبقى بعد إغلاق التطبيق أو تحديث الصفحة).
 
-* [Link to the sample data](https://video.udacity-data.com/topher/2020/July/5f2452ca_hr-dataset/hr-dataset.xlsx)
-* [Link to the Proposal Document](https://github.com/rajatsharma369007/designing-hr-db/blob/main/Document/Proposal%20Document.pdf)
+> ملاحظة: هذا المستودع كان يحوي مشروع قاعدة بيانات HR، وتجد توثيقه القديم في
+> `README-HR-legacy.md`.
 
-## Project Steps
+---
 
-__Step 1__: This step is all about information gathering and putting it down on paper. In this step, we are expected to complete both [business and technical proposal documents](https://github.com/rajatsharma369007/designing-hr-db/blob/main/Document/Proposal%20Document.pdf) required to begin the database design process. 
+## 🗂️ شجرة المشروع
 
-__Step 2__: This is where we walk through the design process. Here I have used Lucidchart to create [database diagrams](https://github.com/rajatsharma369007/designing-hr-db/tree/main/Database_ERD) that will be used to build an actual database.
+```
+.
+├── app/                       # الشاشات (Expo Router - file based routing)
+│   ├── _layout.tsx            # التهيئة العامة: RTL + مزوّد السلة + Stack
+│   ├── index.tsx              # الشاشة الرئيسية (بحث + تصنيفات + شبكة منتجات)
+│   ├── cart.tsx               # شاشة السلة + إتمام الطلب عبر واتساب
+│   └── product/
+│       └── [id].tsx           # شاشة تفاصيل المنتج
+├── components/                # مكوّنات واجهة قابلة لإعادة الاستخدام
+│   ├── Header.tsx             # رأس الصفحة الرئيسية (شعار + اسم المتجر + سلة)
+│   ├── TopBar.tsx             # رأس الصفحات الداخلية مع زر رجوع
+│   ├── SearchBar.tsx          # خانة البحث
+│   ├── CategoryBar.tsx        # شريط التصنيفات الأفقي
+│   ├── ProductCard.tsx        # بطاقة المنتج (مع حركة ضغط)
+│   ├── QtyStepper.tsx         # التحكم بالكمية (+/−)
+│   └── CartButton.tsx         # زر السلة مع شارة العدّاد
+├── context/
+│   └── CartContext.tsx        # حالة السلة (إضافة/حذف/كمية/مجموع)
+├── data/
+│   └── products.ts            # ★ قائمة المنتجات (id, name, price, category, image)
+├── lib/
+│   ├── format.ts              # تنسيق الأسعار والعملة
+│   └── whatsapp.ts            # بناء رابط واتساب وفتحه
+├── assets/
+│   ├── images/                # ★ صور المنتجات (placeholder — استبدلها بصورك)
+│   ├── icon.png               # أيقونة التطبيق
+│   ├── adaptive-icon.png      # أيقونة أندرويد التكيّفية
+│   ├── splash-icon.png        # شاشة البداية
+│   └── favicon.png            # أيقونة الويب
+├── scripts/
+│   └── generate.js            # مولّد data/products.ts والصور البديلة (اختياري)
+├── config.ts                  # ★ إعدادات المتجر (الاسم، رقم واتساب، اللون...)
+├── app.json                   # إعدادات Expo
+├── babel.config.js            # Babel (NativeWind + Reanimated)
+├── metro.config.js            # Metro (NativeWind)
+├── tailwind.config.js         # إعدادات Tailwind
+├── global.css                 # توجيهات Tailwind
+├── tsconfig.json
+└── package.json
+```
 
-__Step 3__: It is time to start coding. Here we use [SQL DDL commands](https://github.com/rajatsharma369007/designing-hr-db/blob/main/SQL_commands/DDL_commands.sql) to create a database. Then we populate our database with the [HR dataset](https://github.com/rajatsharma369007/designing-hr-db/blob/main/SQL_commands/DML_commands.sql). From there, we demonstrate the effectiveness of our database by completing some [SQL CRUD exercises](https://github.com/rajatsharma369007/designing-hr-db/blob/main/SQL_commands/CRUD_commands.sql).
+> الملفات المعلّمة بـ ★ هي التي ستعدّلها عادةً.
 
-## Project Files
+---
 
-#### Conceptual ERD
-![alt-text](https://github.com/rajatsharma369007/designing-hr-db/blob/main/Database_ERD/Conceptual_ERD.png)
+## ⚙️ المتطلبات
 
-#### Logical ERD
-![alt-text](https://github.com/rajatsharma369007/designing-hr-db/blob/main/Database_ERD/Logical_ERD.png)
+- [Node.js](https://nodejs.org/) إصدار 18 أو أحدث.
+- تطبيق **Expo Go** على هاتفك (من App Store / Google Play) للتجربة السريعة.
+- (لبناء التطبيقات) حساب مجاني على [expo.dev](https://expo.dev).
 
-#### Physical ERD
-![alt-text](https://github.com/rajatsharma369007/designing-hr-db/blob/main/Database_ERD/Physical_ERD.png)
+---
 
+## 🚀 التشغيل خطوة بخطوة
 
-#### Staging Table
-* [Link to the Direct Feed command](https://github.com/rajatsharma369007/designing-hr-db/blob/main/SQL_commands/direct_feed.sql)
+### 1) تثبيت الاعتماديات
 
-#### Creation of Physical DB
-* [Link to the DDL commands](https://github.com/rajatsharma369007/designing-hr-db/blob/main/SQL_commands/DDL_commands.sql)
+```bash
+npm install
+```
 
-#### Populating Physical DB
-* [Link to the DML commands](https://github.com/rajatsharma369007/designing-hr-db/blob/main/SQL_commands/DML_commands.sql)
+### 2) تشغيل المشروع
 
-#### Testing of Physical DB
-* [Link to the CRUD commands](https://github.com/rajatsharma369007/designing-hr-db/blob/main/SQL_commands/CRUD_commands.sql)
+```bash
+npx expo start
+```
 
+سيظهر رمز QR في الطرفية. ومن نفس النافذة يمكنك:
 
-## License
-Licensed under the [MIT License](https://github.com/rajatsharma369007/designing-hr-db/blob/main/LICENSE) @ Udacity
+- الضغط على `w` لفتح **نسخة الويب** في المتصفح.
+- الضغط على `a` لفتح **محاكي أندرويد** (إن كان مثبتاً).
+- الضغط على `i` لفتح **محاكي آيفون** (على macOS فقط).
 
-## Issues/Bugs
-Please open issues on github to report bugs or make feature requests
+### 3) التجربة على الجوال عبر Expo Go
 
-## Contribution
-If you are interested in improving the code, please open an issue first to describe the task you are planning to do. For small fixes (a few lines of change) feel free to open pull requests directly.
+1. ثبّت تطبيق **Expo Go** على هاتفك.
+2. تأكّد أن الهاتف والكمبيوتر على **نفس شبكة Wi‑Fi**.
+3. امسح رمز QR الظاهر في الطرفية:
+   - أندرويد: من داخل تطبيق Expo Go.
+   - آيفون: من تطبيق الكاميرا مباشرة.
+
+> إذا واجهت مشكلة في الشبكة جرّب: `npx expo start --tunnel`.
+
+### 4) تجربة الويب فقط
+
+```bash
+npm run web
+```
+
+---
+
+## 📱 بناء تطبيقَي iOS و Android عبر EAS Build
+
+EAS Build يبني ملفات التطبيق على سحابة Expo (لا تحتاج Mac لبناء iOS).
+
+```bash
+# 1) ثبّت أداة EAS (مرة واحدة)
+npm install -g eas-cli
+
+# 2) سجّل الدخول بحساب Expo
+eas login
+
+# 3) هيّئ المشروع للبناء (يُنشئ eas.json)
+eas build:configure
+
+# 4) بناء أندرويد (ملف APK/AAB)
+eas build --platform android
+
+# 5) بناء آيفون (يتطلّب حساب Apple Developer)
+eas build --platform ios
+
+# لبناء المنصّتين معاً
+eas build --platform all
+```
+
+بعد انتهاء البناء سيعطيك رابطاً لتحميل الملف الناتج وتثبيته أو رفعه للمتاجر.
+
+### نشر نسخة الويب (اختياري)
+
+```bash
+npx expo export --platform web      # يُنتج مجلد dist/ جاهزاً للاستضافة
+```
+ثم ارفع مجلد `dist/` لأي استضافة ثابتة (Netlify, Vercel, GitHub Pages...).
+
+---
+
+## 🛠️ التخصيص السريع
+
+كل الإعدادات الأساسية في ملف **`config.ts`**:
+
+```ts
+export const STORE_NAME = "اسم متجرك";
+export const WHATSAPP_NUMBER = "9689XXXXXXXX"; // صيغة دولية بدون + وبدون أصفار بادئة
+export const CURRENCY = "ر.ع.";
+export const PRIMARY_COLOR = "#7C3AED";
+```
+
+### ✅ تغيير رقم واتساب
+عدّل `WHATSAPP_NUMBER` في `config.ts`.
+- اكتبه بالصيغة الدولية **بدون** علامة `+` وبدون أصفار بادئة.
+- مثال لسلطنة عُمان: `9689XXXXXXXX` (968 رمز الدولة ثم الرقم).
+
+### ✅ تعديل اللون الأساسي
+1. غيّر `PRIMARY_COLOR` (و`PRIMARY_COLOR_DARK` للتدرّج) في `config.ts`.
+2. للحصول على تطابق كامل في كل مكان، غيّر أيضاً قيمة `brand` في `tailwind.config.js`.
+
+### ✅ إضافة الأسعار
+الأسعار حالياً `price: 0` (تظهر كـ "السعر عند الطلب"). افتح `data/products.ts`
+واستبدل القيمة لكل منتج، مثال:
+
+```ts
+{
+  id: 5,
+  name: "TEA TIME ICE TEA PEACH 330ML",
+  price: 0.350,            // ← ضع السعر هنا (بدّل 0)
+  category: "TEA TIME",
+  image: require("../assets/images/tea-time-ice-tea-peach-330ml.png"),
+},
+```
+كل المنتجات عليها تعليق `// TODO: أضف السعر` لتسهيل إيجادها.
+
+### ✅ إضافة منتج جديد
+أضف عنصراً جديداً في مصفوفة `PRODUCTS` داخل `data/products.ts`:
+
+```ts
+{
+  id: 100,                                   // رقم فريد
+  name: "اسم المنتج الجديد",
+  price: 0.500,
+  category: "SUPER",                          // أحد التصنيفات المعرّفة في Category
+  image: require("../assets/images/my-new-drink.png"), // مسار ثابت صريح
+},
+```
+> مهم: مسار `require` يجب أن يكون **نصاً ثابتاً صريحاً** (لا تبنِه من متغيّر)
+> لأن حزمة Metro تحتاج المسار معروفاً وقت البناء.
+
+### ✅ استبدال صورة منتج
+1. ضع صورتك (PNG، يُفضّل خلفية شفافة ومقاس مربّع ~600×600) في `assets/images/`.
+2. استخدم **نفس اسم الملف** الموجود في `require` الخاص بالمنتج.
+3. أعد تشغيل الخادم مع مسح الذاكرة المؤقتة: `npx expo start -c`.
+
+> الصور الحالية مجرّد صور بديلة ملوّنة حسب التصنيف. راجع `assets/images/README.md`.
+
+---
+
+## 🧾 آلية الطلب عبر واتساب
+
+عند الضغط على **"إتمام الطلب عبر واتساب"** في السلة:
+
+1. يُبنى نص رسالة يتضمّن: اسم المتجر، ثم كل منتج (`الاسم × الكمية = السعر الفرعي`)،
+   ثم **المجموع الكلي**، ثم سطرَين فارغَين: `الاسم:` و`العنوان:` ليملأهما الزبون.
+2. يُرمَّز النص عبر `encodeURIComponent` ويُبنى رابط:
+   `https://wa.me/<WHATSAPP_NUMBER>?text=<MESSAGE>`
+3. يُفتح الرابط عبر `Linking.openURL` (على الجوال) أو تبويب جديد (على الويب).
+
+الكود في `lib/whatsapp.ts`.
+
+---
+
+## 🔄 إعادة توليد البيانات والصور (اختياري)
+
+لإعادة توليد `data/products.ts` والصور البديلة من القائمة الأصلية:
+
+```bash
+npm run gen
+```
+الكود في `scripts/generate.js` (يمكنك تعديل القائمة فيه).
+
+---
+
+## 🧰 التقنيات المستخدمة
+
+| التقنية | الغرض |
+|---|---|
+| Expo (SDK 52) | إطار العمل متعدد المنصّات |
+| Expo Router | التنقّل المبني على الملفات |
+| TypeScript | أمان الأنواع |
+| NativeWind 4 (Tailwind) | التنسيق المتجاوب |
+| expo-linear-gradient | التدرّجات اللونية |
+| @expo/vector-icons | الأيقونات |
+| @expo-google-fonts/cairo + expo-font | خط Cairo العربي (أوزان 400/600/700/800) |
+| @react-native-async-storage/async-storage | حفظ السلة محلياً |
+
+### 🔤 الخط العربي (Cairo)
+- يُحمَّل في `app/_layout.tsx` عبر `useFonts`، وتبقى شاشة البداية ظاهرة حتى يكتمل التحميل.
+- الأوزان متاحة كأصناف Tailwind: `font-cairo` (عادي)، `font-cairo-semibold`،
+  `font-cairo-bold`، `font-cairo-extrabold` (معرّفة في `tailwind.config.js`).
+- لتغيير الخط، استبدل حزمة الخط واسماء العائلات في `_layout.tsx` و`tailwind.config.js`.
+
+### 💾 حفظ السلة
+- يُخزَّن محتوى السلة (المعرّف + الكمية) تلقائياً عند كل تغيير في `context/CartContext.tsx`،
+  ويُعاد تحميله عند فتح التطبيق. يعمل على الجوال (AsyncStorage) والويب (localStorage).
+
+تم اختبار البناء بنجاح على الويب وأندرويد (`expo export`).
