@@ -15,14 +15,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.example.drinksstore"
+      "bundleIdentifier": "com.anwaralhedh.drinksstore"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F5F3FF"
       },
-      "package": "com.example.drinksstore"
+      "package": "com.anwaralhedh.drinksstore"
     },
     "web": {
       "bundler": "metro",
