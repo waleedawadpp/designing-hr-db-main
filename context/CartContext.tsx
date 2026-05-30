@@ -9,6 +9,7 @@ import React, {
   useState,
 } from "react";
 import { Product, PRODUCTS } from "../data/products";
+import { usePrices } from "./PricesContext";
 
 export type CartItem = {
   product: Product;
@@ -38,6 +39,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   // نمنع الكتابة فوق البيانات المخزّنة قبل اكتمال تحميلها
   const hydrated = useRef(false);
+  // الأسعار الحيّة لإعادة احتساب أسعار عناصر السلة عند تعديل الأدمن
+  const { prices } = usePrices();
 
   // تحميل السلة المحفوظة عند بدء التطبيق
   useEffect(() => {
@@ -119,19 +122,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     [items]
   );
 
+  // إعادة احتساب أسعار عناصر السلة من الأسعار الحيّة (تعديلات الأدمن)
+  const pricedItems = useMemo(
+    () =>
+      items.map((i) =>
+        prices[i.product.id] != null
+          ? { ...i, product: { ...i.product, price: prices[i.product.id] } }
+          : i
+      ),
+    [items, prices]
+  );
+
   const count = useMemo(
     () => items.reduce((sum, i) => sum + i.quantity, 0),
     [items]
   );
 
   const total = useMemo(
-    () => items.reduce((sum, i) => sum + i.product.price * i.quantity, 0),
-    [items]
+    () =>
+      pricedItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0),
+    [pricedItems]
   );
 
   const value = useMemo(
     () => ({
-      items,
+      items: pricedItems,
       count,
       total,
       addItem,
@@ -142,7 +157,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       getQuantity,
     }),
     [
-      items,
+      pricedItems,
       count,
       total,
       addItem,

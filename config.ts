@@ -25,3 +25,38 @@ export const PRIMARY_COLOR_DARK = "#5B21B6";
 /** وصف افتراضي يظهر في صفحة تفاصيل المنتج إن لم يكن للمنتج وصف خاص */
 export const DEFAULT_DESCRIPTION =
   "مشروب منعش بجودة عالية. اطلبه الآن واستمتع بطعمٍ مميز يصلك بسرعة.";
+
+// ============================================================
+// إعدادات الأدمن و Firebase (لتعديل الأسعار سحابياً)
+// ============================================================
+
+/**
+ * رمز دخول لوحة الأدمن (PIN). غيّره إلى رمز سري تعرفه أنت فقط.
+ * يُطلب عند فتح شاشة "/admin" لتعديل الأسعار.
+ */
+export const ADMIN_PIN = "1234";
+
+/**
+ * إعدادات مشروع Firebase.
+ * ـ اتركها فارغة الآن → التطبيق يعمل بالتخزين المحلي (الأسعار على الجهاز فقط).
+ * ـ املأها من: Firebase Console → Project settings → Your apps → SDK config،
+ *   لتتزامن الأسعار سحابياً لحظياً لكل الزبائن.
+ *
+ * الخطوات باختصار (مجاناً، بلا خادم):
+ *   1) أنشئ مشروعاً على https://console.firebase.google.com
+ *   2) فعّل Firestore Database (وضع Production أو Test).
+ *   3) أضف تطبيق ويب (</>) وانسخ قيم firebaseConfig هنا.
+ */
+export const FIREBASE_CONFIG = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: "",
+};
+
+/** هل ضُبطت إعدادات Firebase؟ (يُحسب تلقائياً) */
+export const FIREBASE_ENABLED =
+  FIREBASE_CONFIG.apiKey.trim() !== "" &&
+  FIREBASE_CONFIG.projectId.trim() !== "";

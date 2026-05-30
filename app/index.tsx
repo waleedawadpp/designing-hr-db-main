@@ -10,24 +10,26 @@ import Header from "../components/Header";
 import SearchBar from "../components/SearchBar";
 import CategoryBar from "../components/CategoryBar";
 import ProductCard from "../components/ProductCard";
-import { CATEGORIES, Category, PRODUCTS } from "../data/products";
+import { CATEGORIES, Category } from "../data/products";
+import { usePrices } from "../context/PricesContext";
 
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<Category | "الكل">("الكل");
+  const { products } = usePrices();
 
   // عدد الأعمدة حسب عرض الشاشة (متجاوب): جوال = 2، تابلت/ويب = أكثر
   const numColumns = Math.min(5, Math.max(2, Math.floor(width / 240)));
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return PRODUCTS.filter((p) => {
+    return products.filter((p) => {
       const matchCat = category === "الكل" || p.category === category;
       const matchQuery = q === "" || p.name.toLowerCase().includes(q);
       return matchCat && matchQuery;
     });
-  }, [query, category]);
+  }, [query, category, products]);
 
   // إضافة عناصر فارغة لموازنة الصف الأخير حتى لا يتمدّد منتج وحيد على كامل العرض
   const data = useMemo(() => {

@@ -14,6 +14,7 @@ import {
   Cairo_800ExtraBold,
 } from "@expo-google-fonts/cairo";
 import { CartProvider } from "../context/CartContext";
+import { PricesProvider } from "../context/PricesContext";
 
 // تفعيل الاتجاه من اليمين لليسار (RTL) على كل المنصّات
 I18nManager.allowRTL(true);
@@ -60,22 +61,25 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider onLayout={onLayoutRootView}>
-      <CartProvider>
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: "#F5F3FF" },
-            animation: "slide_from_left",
-          }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen name="product/[id]" />
-          <Stack.Screen name="cart" />
-          <Stack.Screen name="checkout" />
-          <Stack.Screen name="order-success" />
-        </Stack>
-      </CartProvider>
+      <PricesProvider>
+        <CartProvider>
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: "#F5F3FF" },
+              animation: "slide_from_left",
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="product/[id]" />
+            <Stack.Screen name="cart" />
+            <Stack.Screen name="checkout" />
+            <Stack.Screen name="order-success" />
+            <Stack.Screen name="admin" />
+          </Stack>
+        </CartProvider>
+      </PricesProvider>
     </SafeAreaProvider>
   );
 }

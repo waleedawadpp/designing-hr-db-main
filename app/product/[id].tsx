@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import TopBar from "../../components/TopBar";
-import { PRODUCTS } from "../../data/products";
+import { usePrices } from "../../context/PricesContext";
 import { DEFAULT_DESCRIPTION, PRIMARY_COLOR, PRIMARY_COLOR_DARK } from "../../config";
 import { formatPrice } from "../../lib/format";
 import { useCart } from "../../context/CartContext";
@@ -13,8 +13,9 @@ export default function ProductDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { addItem, getQuantity } = useCart();
+  const { products } = usePrices();
 
-  const product = PRODUCTS.find((p) => String(p.id) === String(id));
+  const product = products.find((p) => String(p.id) === String(id));
 
   if (!product) {
     return (
