@@ -1,9 +1,7 @@
 import React from "react";
 import {
-  Alert,
   FlatList,
   Image,
-  Platform,
   Pressable,
   Text,
   View,
@@ -15,28 +13,16 @@ import TopBar from "../components/TopBar";
 import QtyStepper from "../components/QtyStepper";
 import { useCart } from "../context/CartContext";
 import { formatPrice, formatTotal } from "../lib/format";
-import { sendOrderToWhatsApp } from "../lib/whatsapp";
-import { PRIMARY_COLOR, PRIMARY_COLOR_DARK, WHATSAPP_NUMBER } from "../config";
+import { PRIMARY_COLOR, PRIMARY_COLOR_DARK } from "../config";
 
 export default function CartScreen() {
   const router = useRouter();
   const { items, total, increment, decrement, removeItem, clear } = useCart();
 
-  const handleCheckout = async () => {
+  // ننتقل لشاشة إتمام الطلب لإدخال بيانات الزبون قبل الإرسال لواتساب
+  const handleCheckout = () => {
     if (items.length === 0) return;
-
-    if (
-      !WHATSAPP_NUMBER ||
-      WHATSAPP_NUMBER.includes("X")
-    ) {
-      const msg =
-        "الرجاء ضبط رقم واتساب في ملف config.ts (المتغيّر WHATSAPP_NUMBER).";
-      if (Platform.OS === "web") window.alert(msg);
-      else Alert.alert("رقم واتساب غير مضبوط", msg);
-      return;
-    }
-
-    await sendOrderToWhatsApp(items, total);
+    router.push("/checkout");
   };
 
   if (items.length === 0) {
@@ -153,20 +139,20 @@ export default function CartScreen() {
           className="overflow-hidden rounded-2xl active:opacity-90"
         >
           <LinearGradient
-            colors={["#22C55E", "#16A34A"]}
+            colors={[PRIMARY_COLOR, PRIMARY_COLOR_DARK]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             className="flex-row items-center justify-center gap-2 py-4"
           >
-            <Ionicons name="logo-whatsapp" size={24} color="#fff" />
             <Text className="text-base font-cairo-extrabold text-white">
-              إتمام الطلب عبر واتساب
+              إتمام الطلب
             </Text>
+            <Ionicons name="arrow-back" size={22} color="#fff" />
           </LinearGradient>
         </Pressable>
 
         <Text className="text-center text-xs font-cairo text-gray-400">
-          سيتم فتح واتساب برسالة جاهزة تحتوي تفاصيل طلبك
+          الخطوة التالية: إدخال بياناتك ثم الإرسال عبر واتساب
         </Text>
       </View>
     </View>
