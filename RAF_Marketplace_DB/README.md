@@ -143,7 +143,10 @@ vendor   1───* ai_forecast / marketing_campaign / ai_job
 
 | File | Purpose |
 |------|---------|
-| `schema.sql` | Complete DDL — extensions, enums, tables, constraints, indexes. |
-| `seed.sql`   | Minimal reference + sample data for local development. |
+| `schema.sql`  | Complete DDL — extensions, enums, tables, constraints, indexes. |
+| `views.sql`   | Reporting & analytics views (revenue, sales, vendor, customer, AI trends, low stock). |
+| `queries.sql` | Common CRUD & query examples for application developers. |
+| `seed.sql`    | Minimal reference + sample data for local development. |
+| `ERD.md`      | Entity-relationship diagram (Mermaid, renders on GitHub). |
 
 > This design is independent of the legacy HR database in `../SQL_commands/`.
