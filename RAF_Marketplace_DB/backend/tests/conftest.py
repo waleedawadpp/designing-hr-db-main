@@ -44,18 +44,19 @@ def _seed_rbac() -> None:
         }
         for key, (ar, en) in roles.items():
             db.add(Role(role_key=key, name_ar=ar, name_en=en))
-        for pk in ("product.create", "vendor.approve"):
+        for pk in ("product.create", "vendor.approve", "order.manage"):
             db.add(Permission(perm_key=pk, description=pk))
         db.flush()
 
         admin = next(r for r in db.query(Role).all() if r.role_key == "admin")
         vowner = next(r for r in db.query(Role).all() if r.role_key == "vendor_owner")
         perms = {p.perm_key: p for p in db.query(Permission).all()}
-        # admin: all perms; vendor_owner: product.create
+        # admin: all perms; vendor_owner: product.create + order.manage
         for p in perms.values():
             db.add(RolePermission(role_id=admin.role_id, permission_id=p.permission_id))
-        db.add(RolePermission(role_id=vowner.role_id,
-                              permission_id=perms["product.create"].permission_id))
+        for pk in ("product.create", "order.manage"):
+            db.add(RolePermission(role_id=vowner.role_id,
+                                  permission_id=perms[pk].permission_id))
         db.commit()
 
         # A vendor (vendor_id=1) so product-create tests satisfy the FK.

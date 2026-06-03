@@ -27,11 +27,12 @@ backend/
 │       ├── vendors.py     # list/get/approve vendors
 │       ├── cart.py        # view/add/remove cart items
 │       ├── orders.py      # checkout, payment confirm, order retrieval
-│       └── ai.py          # product generator, recommendations, assistant
+│       ├── ai.py          # product generator, recommendations, assistant
+│       └── shipments.py   # shipment creation + tracking timeline
 │   └── services/
 │       └── ai.py          # pluggable AI provider (stub | anthropic)
 ├── alembic/               # migrations (initial applies ../schema.sql)
-├── tests/                 # pytest suite (auth, 2FA, RBAC, orders, AI)
+├── tests/                 # pytest suite (auth, 2FA, RBAC, orders, AI, shipping)
 ├── alembic.ini
 ├── Dockerfile
 └── requirements.txt
@@ -86,6 +87,18 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 | POST | `/ai/products/generate` | Generate bilingual title/description/tags/SEO (records an `ai_job`) |
 | GET | `/ai/recommendations` | Trending/new product recommendations |
 | POST | `/ai/assistant/chat` | Shopping-assistant turn (persists the conversation) |
+| POST | `/orders/{id}/shipments` | Create a shipment for a vendor's items — requires `order.manage` |
+| POST | `/shipments/{id}/events` | Post a tracking event — requires `order.manage` |
+| GET | `/shipments/{id}` | Shipment detail + tracking timeline (order owner) |
+| GET | `/orders/{id}/shipments` | All shipments for an order (order owner) |
+
+## Shipping & tracking
+
+Carriers (`aramex`/`dhl`/`fedex`/`local`) are modelled as an enum. A shipment
+carries a status and an append-only timeline of `shipment_event`s
+(status + location + time). Order status follows its shipments automatically:
+any shipment in transit moves the order to `shipped`; once all are delivered
+the order becomes `delivered`.
 
 ## AI layer
 
@@ -131,13 +144,15 @@ export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
 pytest -v
 ```
 
-The suite (18 tests) covers registration, login, duplicate/invalid
+The suite (21 tests) covers registration, login, duplicate/invalid
 credentials, token-protected `/me`, the refresh flow, 2FA enable +
 enforcement, RBAC allow/deny, the full cart → checkout → payment flow
 (commission math, inventory reservation/deduction, vendor wallet credit,
-idempotent confirmation, owner-scoping), and the AI layer (bilingual product
+idempotent confirmation, owner-scoping), the AI layer (bilingual product
 generation + `ai_job` persistence, recommendations, assistant chat
-persistence + owner-scoping) — all green against PostgreSQL 16.
+persistence + owner-scoping), and shipping/tracking (shipment lifecycle,
+order status roll-up, buyer tracking access, validation/permissions) — all
+green against PostgreSQL 16.
 
 ## Continuous integration
 

@@ -250,3 +250,41 @@ class ChatOut(BaseModel):
     chat_id: int
     reply: str
     suggested_product_ids: list[int] = Field(default_factory=list)
+
+
+# ---- shipping & tracking --------------------------------------------------- #
+class ShipmentCreateIn(BaseModel):
+    vendor_id: int
+    carrier: str = Field(description="aramex | dhl | fedex | local")
+    tracking_number: str | None = None
+
+
+class ShipmentEventIn(BaseModel):
+    status: str = Field(description="picked_up | in_transit | out_for_delivery | delivered | failed | returned")
+    location: str | None = None
+    note: str | None = None
+
+
+class ShipmentEventOut(BaseModel):
+    model_config = ORM
+    event_id: int
+    status: str
+    location: str | None = None
+    note: str | None = None
+    occurred_at: dt.datetime
+
+
+class ShipmentOut(BaseModel):
+    model_config = ORM
+    shipment_id: int
+    order_id: int
+    vendor_id: int
+    carrier: str
+    tracking_number: str | None = None
+    status: str
+    shipped_at: dt.datetime | None = None
+    delivered_at: dt.datetime | None = None
+
+
+class ShipmentDetail(ShipmentOut):
+    events: list[ShipmentEventOut] = Field(default_factory=list)
