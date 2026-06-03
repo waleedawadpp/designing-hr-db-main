@@ -149,5 +149,7 @@ vendor   1───* ai_forecast / marketing_campaign / ai_job
 | `seed.sql`    | Minimal reference + sample data for local development. |
 | `ERD.md`      | Entity-relationship diagram (Mermaid, renders on GitHub). |
 | `orm/`        | SQLAlchemy 2.0 ORM models for the FastAPI backend (45 tables, parity-checked). |
+| `backend/`    | Runnable FastAPI app + Alembic migrations (see `backend/README.md`). |
+| `docker-compose.yml` | Local stack: PostgreSQL 16 + Redis 7 + the API. |
 
 > This design is independent of the legacy HR database in `../SQL_commands/`.
