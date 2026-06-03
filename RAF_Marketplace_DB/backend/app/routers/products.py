@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.config import settings
 from app.db import get_db
+from app.deps import require_permission
 from app.schemas import ProductCreate, ProductDetail, ProductListResponse, ProductOut
-from orm import Product, ProductStatus
+from orm import AppUser, Product, ProductStatus
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -62,7 +63,11 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=ProductDetail, status_code=201)
-def create_product(payload: ProductCreate, db: Session = Depends(get_db)):
+def create_product(
+    payload: ProductCreate,
+    db: Session = Depends(get_db),
+    _user: AppUser = Depends(require_permission("product.create")),
+):
     product = Product(**payload.model_dump(), status=ProductStatus.draft)
     db.add(product)
     db.commit()

@@ -16,13 +16,17 @@ backend/
 ├── app/
 │   ├── config.py          # env-driven settings (RAF_* vars)
 │   ├── db.py              # engine + get_db() session dependency
+│   ├── security.py        # bcrypt hashing, JWT, TOTP (2FA)
+│   ├── deps.py            # get_current_user + require_permission (RBAC)
 │   ├── schemas.py         # Pydantic v2 request/response models
 │   ├── main.py            # FastAPI app + router registration
 │   └── routers/
 │       ├── health.py      # /health, /ready
+│       ├── auth.py        # register/login/refresh/me + 2FA
 │       ├── products.py    # list/search/get/create products
 │       └── vendors.py     # list/get/approve vendors
 ├── alembic/               # migrations (initial applies ../schema.sql)
+├── tests/                 # pytest suite (auth, 2FA, RBAC)
 ├── alembic.ini
 ├── Dockerfile
 └── requirements.txt
@@ -55,12 +59,41 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 |--------|------|-------------|
 | GET | `/health` | Liveness |
 | GET | `/ready` | Readiness (checks DB) |
+| POST | `/auth/register` | Register a customer (auto-grants `customer` role) |
+| POST | `/auth/login` | OAuth2 password login → JWT access + refresh tokens |
+| POST | `/auth/refresh` | Exchange a refresh token for new tokens |
+| GET | `/auth/me` | Current user (requires Bearer token) |
+| POST | `/auth/2fa/setup` | Generate a TOTP secret + `otpauth://` URI |
+| POST | `/auth/2fa/enable` · `/auth/2fa/disable` | Turn 2FA on/off (verifies a code) |
 | GET | `/products` | Published products; filters: `category_id`, `vendor_id`, `q`, pagination |
 | GET | `/products/{id}` | Product detail with variants |
-| POST | `/products` | Create a draft product |
+| POST | `/products` | Create a draft product — requires `product.create` permission |
 | GET | `/vendors` | List vendors (approved by default) |
 | GET | `/vendors/{slug}` | Vendor by slug |
-| POST | `/vendors/{id}/approve` | Admin approval (wire to RBAC before prod) |
+| POST | `/vendors/{id}/approve` | Approve a vendor — requires `vendor.approve` permission |
+
+## Security
+
+- **Passwords** hashed with bcrypt (`app/security.py`).
+- **JWT** access + refresh tokens (PyJWT); `type` claim distinguishes them so a
+  refresh token can't be used as an access token and vice-versa.
+- **2FA** via TOTP (pyotp) — `/auth/2fa/setup` returns an `otpauth://` URI for
+  authenticator apps; once enabled, login requires the current code.
+- **RBAC** — `app/deps.py::require_permission(key)` resolves a user's roles →
+  permissions and gates privileged routes. Set a strong `RAF_JWT_SECRET`
+  (≥32 bytes) in production.
+
+## Tests
+
+```bash
+# Point at a DISPOSABLE database — the suite drops & recreates `public`.
+export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
+pytest -v
+```
+
+The suite (7 tests) covers registration, login, duplicate/invalid credentials,
+token-protected `/me`, the refresh flow, 2FA enable + enforcement, and RBAC
+allow/deny — all green against PostgreSQL 16.
 
 ## Migrations
 

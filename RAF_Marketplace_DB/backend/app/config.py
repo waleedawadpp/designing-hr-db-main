@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     api_version: str = "0.1.0"
     default_lang: str = "ar"
 
+    # Auth / JWT
+    jwt_secret: str = "change-me-in-production"  # set RAF_JWT_SECRET in prod
+    jwt_algorithm: str = "HS256"
+    access_token_ttl_minutes: int = 30
+    refresh_token_ttl_days: int = 14
+    totp_issuer: str = "RAF Marketplace"
+
     # Pagination
     default_page_size: int = 24
     max_page_size: int = 100

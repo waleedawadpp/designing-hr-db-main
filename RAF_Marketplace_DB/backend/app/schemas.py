@@ -106,3 +106,47 @@ class CustomerOut(BaseModel):
     preferred_lang: str
     status: str
     created_at: dt.datetime
+
+
+# ---- auth ------------------------------------------------------------------ #
+class RegisterIn(BaseModel):
+    full_name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    phone: str | None = None
+    password: str = Field(min_length=8, max_length=128)
+    preferred_lang: str = "ar"
+
+
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
+    totp_code: str | None = Field(None, description="Required if 2FA is enabled")
+
+
+class TokenOut(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class RefreshIn(BaseModel):
+    refresh_token: str
+
+
+class MeOut(BaseModel):
+    model_config = ORM
+    user_id: int
+    full_name: str
+    email: str
+    preferred_lang: str
+    status: str
+    twofa_enabled: bool
+
+
+class TwoFASetupOut(BaseModel):
+    secret: str
+    otpauth_uri: str
+
+
+class TwoFAVerifyIn(BaseModel):
+    code: str = Field(min_length=6, max_length=8)
