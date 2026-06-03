@@ -150,3 +150,66 @@ class TwoFASetupOut(BaseModel):
 
 class TwoFAVerifyIn(BaseModel):
     code: str = Field(min_length=6, max_length=8)
+
+
+# ---- cart ------------------------------------------------------------------ #
+class CartItemIn(BaseModel):
+    variant_id: int
+    quantity: int = Field(ge=1)
+
+
+class CartItemOut(BaseModel):
+    variant_id: int
+    sku: str
+    name_ar: str
+    name_en: str
+    unit_price: Decimal
+    quantity: int
+    line_total: Decimal
+
+
+class CartOut(BaseModel):
+    cart_id: int
+    items: list[CartItemOut]
+    subtotal: Decimal
+
+
+# ---- orders & payments ----------------------------------------------------- #
+class CheckoutIn(BaseModel):
+    shipping_address_id: int | None = None
+    gateway: str = Field(description="thawani | omannet | stripe | paypal | cod")
+
+
+class OrderItemOut(BaseModel):
+    model_config = ORM
+    order_item_id: int
+    vendor_id: int
+    product_name: str
+    sku: str
+    unit_price: Decimal
+    quantity: int
+    line_total: Decimal
+    commission_amount: Decimal
+
+
+class PaymentOut(BaseModel):
+    model_config = ORM
+    payment_id: int
+    gateway: str
+    status: str
+    amount: Decimal
+
+
+class OrderOut(BaseModel):
+    model_config = ORM
+    order_id: int
+    order_number: str
+    status: str
+    currency: str
+    subtotal: Decimal
+    grand_total: Decimal
+    items: list[OrderItemOut] = Field(default_factory=list)
+
+
+class OrderWithPayment(OrderOut):
+    payment: PaymentOut | None = None

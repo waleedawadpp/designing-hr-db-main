@@ -15,7 +15,15 @@ from sqlalchemy import text
 from app.db import SessionLocal, engine
 from app.main import app
 from app.security import hash_password
-from orm import AppUser, Permission, Role, RolePermission, UserStatus, Vendor, VendorStatus
+from orm import (
+    AppUser, Inventory, Permission, Product, ProductStatus, ProductVariant,
+    Role, RolePermission, UserStatus, Vendor, VendorStatus,
+)
+
+# Stable identifiers the test suite relies on.
+SEED_VARIANT_SKU = "SEED-SKU-1"
+SEED_VARIANT_PRICE = "10.000"
+SEED_INVENTORY_QTY = 50
 
 _SCHEMA_SQL = pathlib.Path(__file__).resolve().parents[2] / "schema.sql"
 
@@ -57,10 +65,26 @@ def _seed_rbac() -> None:
         )
         db.add(owner)
         db.flush()
-        db.add(Vendor(
+        vendor = Vendor(
             owner_user_id=owner.user_id, store_name_ar="متجر", store_name_en="Seed Store",
-            slug="seed-store", status=VendorStatus.approved,
-        ))
+            slug="seed-store", status=VendorStatus.approved,  # commission_rate defaults to 10.00
+        )
+        db.add(vendor)
+        db.flush()
+
+        # A published product with one variant + stock, for cart/checkout tests.
+        product = Product(
+            vendor_id=vendor.vendor_id, name_ar="منتج", name_en="Seed Product",
+            slug="seed-product", base_price=SEED_VARIANT_PRICE, status=ProductStatus.published,
+        )
+        db.add(product)
+        db.flush()
+        variant = ProductVariant(
+            product_id=product.product_id, sku=SEED_VARIANT_SKU, price=SEED_VARIANT_PRICE,
+        )
+        db.add(variant)
+        db.flush()
+        db.add(Inventory(variant_id=variant.variant_id, quantity=SEED_INVENTORY_QTY))
         db.commit()
 
 

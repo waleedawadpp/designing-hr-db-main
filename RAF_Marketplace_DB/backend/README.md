@@ -24,7 +24,9 @@ backend/
 │       ├── health.py      # /health, /ready
 │       ├── auth.py        # register/login/refresh/me + 2FA
 │       ├── products.py    # list/search/get/create products
-│       └── vendors.py     # list/get/approve vendors
+│       ├── vendors.py     # list/get/approve vendors
+│       ├── cart.py        # view/add/remove cart items
+│       └── orders.py      # checkout, payment confirm, order retrieval
 ├── alembic/               # migrations (initial applies ../schema.sql)
 ├── tests/                 # pytest suite (auth, 2FA, RBAC)
 ├── alembic.ini
@@ -71,6 +73,26 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 | GET | `/vendors` | List vendors (approved by default) |
 | GET | `/vendors/{slug}` | Vendor by slug |
 | POST | `/vendors/{id}/approve` | Approve a vendor — requires `vendor.approve` permission |
+| GET | `/cart` | View the current user's cart with totals |
+| POST | `/cart/items` | Add/accumulate a variant in the cart |
+| DELETE | `/cart/items/{variant_id}` | Remove a line from the cart |
+| POST | `/orders/checkout` | Turn the cart into an order (+ pending payment) |
+| POST | `/orders/{id}/pay/confirm` | Simulate gateway success → deduct stock, credit vendor |
+| GET | `/orders` | List the current user's orders |
+| GET | `/orders/{id}` | Order detail with items + payment (owner only) |
+
+## Checkout & payments
+
+`POST /orders/checkout` builds a **multi-vendor order** from the cart: it
+snapshots each line's price/name, computes per-line platform **commission**
+from the vendor's rate, **reserves** inventory, empties the cart, and opens a
+`pending` payment for the chosen gateway (`thawani`/`omannet`/`stripe`/
+`paypal`/`cod`).
+
+`POST /orders/{id}/pay/confirm` simulates a successful gateway callback: it
+marks the payment `paid` and the order `confirmed`, **deducts** the reserved
+stock, and **credits each vendor's wallet** net of commission with a
+`wallet_transaction` ledger entry. It is idempotent on already-paid orders.
 
 ## Security
 
@@ -91,9 +113,11 @@ export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
 pytest -v
 ```
 
-The suite (7 tests) covers registration, login, duplicate/invalid credentials,
-token-protected `/me`, the refresh flow, 2FA enable + enforcement, and RBAC
-allow/deny — all green against PostgreSQL 16.
+The suite (13 tests) covers registration, login, duplicate/invalid
+credentials, token-protected `/me`, the refresh flow, 2FA enable +
+enforcement, RBAC allow/deny, and the full cart → checkout → payment flow
+(commission math, inventory reservation/deduction, vendor wallet credit,
+idempotent confirmation, owner-scoping) — all green against PostgreSQL 16.
 
 ## Migrations
 
