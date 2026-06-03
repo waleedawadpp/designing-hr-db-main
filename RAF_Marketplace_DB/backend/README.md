@@ -119,6 +119,13 @@ enforcement, RBAC allow/deny, and the full cart → checkout → payment flow
 (commission math, inventory reservation/deduction, vendor wallet credit,
 idempotent confirmation, owner-scoping) — all green against PostgreSQL 16.
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push/PR touching `RAF_Marketplace_DB/`:
+it spins up PostgreSQL 16, verifies `schema.sql` applies cleanly, runs the
+Alembic `upgrade → downgrade → upgrade` round-trip, and executes the full
+pytest suite.
+
 ## Migrations
 
 ```bash

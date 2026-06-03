@@ -1,5 +1,7 @@
 # RAF Marketplace — Database Design
 
+[![RAF Marketplace CI](https://github.com/waleedawadpp/designing-hr-db-main/actions/workflows/ci.yml/badge.svg)](https://github.com/waleedawadpp/designing-hr-db-main/actions/workflows/ci.yml)
+
 PostgreSQL schema for **RAF**, an AI-powered multi-vendor marketplace for the
 **Oman & GCC** market. This design covers the full scope of the product
 specification: multi-vendor catalog, orders, payments, shipping, the AI layer,
