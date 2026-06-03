@@ -14,3 +14,5 @@ bcrypt>=4.1
 # Tests
 pytest>=8.0
 httpx>=0.27
+# Optional: real AI provider (RAF_AI_PROVIDER=anthropic)
+# anthropic>=0.40

@@ -27,5 +27,10 @@ class Settings(BaseSettings):
     default_page_size: int = 24
     max_page_size: int = 100
 
+    # AI layer
+    ai_provider: str = "stub"            # "stub" | "anthropic"
+    ai_model: str = "claude-sonnet-4-6"  # used when ai_provider="anthropic"
+    anthropic_api_key: str | None = None
+
 
 settings = Settings()

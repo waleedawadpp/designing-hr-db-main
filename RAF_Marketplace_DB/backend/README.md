@@ -26,9 +26,12 @@ backend/
 │       ├── products.py    # list/search/get/create products
 │       ├── vendors.py     # list/get/approve vendors
 │       ├── cart.py        # view/add/remove cart items
-│       └── orders.py      # checkout, payment confirm, order retrieval
+│       ├── orders.py      # checkout, payment confirm, order retrieval
+│       └── ai.py          # product generator, recommendations, assistant
+│   └── services/
+│       └── ai.py          # pluggable AI provider (stub | anthropic)
 ├── alembic/               # migrations (initial applies ../schema.sql)
-├── tests/                 # pytest suite (auth, 2FA, RBAC)
+├── tests/                 # pytest suite (auth, 2FA, RBAC, orders, AI)
 ├── alembic.ini
 ├── Dockerfile
 └── requirements.txt
@@ -80,6 +83,21 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 | POST | `/orders/{id}/pay/confirm` | Simulate gateway success → deduct stock, credit vendor |
 | GET | `/orders` | List the current user's orders |
 | GET | `/orders/{id}` | Order detail with items + payment (owner only) |
+| POST | `/ai/products/generate` | Generate bilingual title/description/tags/SEO (records an `ai_job`) |
+| GET | `/ai/recommendations` | Trending/new product recommendations |
+| POST | `/ai/assistant/chat` | Shopping-assistant turn (persists the conversation) |
+
+## AI layer
+
+The AI endpoints sit behind a **pluggable provider** (`app/services/ai.py`):
+
+- **`stub`** (default) — deterministic, offline, dependency-free; used in dev/CI.
+- **`anthropic`** — set `RAF_AI_PROVIDER=anthropic` and `RAF_ANTHROPIC_API_KEY`
+  to route generation/chat through the Claude API (`RAF_AI_MODEL`,
+  default `claude-sonnet-4-6`). Install the `anthropic` SDK to use it.
+
+Every generation is recorded in `ai_job` (input/output/status/model); the
+shopping assistant persists turns to `ai_chat_session` / `ai_chat_message`.
 
 ## Checkout & payments
 
@@ -113,11 +131,13 @@ export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
 pytest -v
 ```
 
-The suite (13 tests) covers registration, login, duplicate/invalid
+The suite (18 tests) covers registration, login, duplicate/invalid
 credentials, token-protected `/me`, the refresh flow, 2FA enable +
-enforcement, RBAC allow/deny, and the full cart → checkout → payment flow
+enforcement, RBAC allow/deny, the full cart → checkout → payment flow
 (commission math, inventory reservation/deduction, vendor wallet credit,
-idempotent confirmation, owner-scoping) — all green against PostgreSQL 16.
+idempotent confirmation, owner-scoping), and the AI layer (bilingual product
+generation + `ai_job` persistence, recommendations, assistant chat
+persistence + owner-scoping) — all green against PostgreSQL 16.
 
 ## Continuous integration
 

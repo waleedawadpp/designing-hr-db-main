@@ -213,3 +213,40 @@ class OrderOut(BaseModel):
 
 class OrderWithPayment(OrderOut):
     payment: PaymentOut | None = None
+
+
+# ---- AI layer -------------------------------------------------------------- #
+class ProductGenIn(BaseModel):
+    name_hint: str | None = Field(None, description="Rough product name or keywords")
+    category: str | None = None
+    details: str | None = None
+
+
+class ProductGenOut(BaseModel):
+    job_id: int
+    title_ar: str
+    title_en: str
+    description_ar: str
+    description_en: str
+    tags: list[str]
+    seo_title: str
+    seo_description: str
+
+
+class RecommendationOut(BaseModel):
+    product_id: int
+    name_ar: str
+    name_en: str
+    score: Decimal
+    recommendation_type: str
+
+
+class ChatIn(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+    chat_id: int | None = Field(None, description="Continue an existing conversation")
+
+
+class ChatOut(BaseModel):
+    chat_id: int
+    reply: str
+    suggested_product_ids: list[int] = Field(default_factory=list)
