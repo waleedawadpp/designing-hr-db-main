@@ -1,0 +1,6 @@
+SQLAlchemy>=2.0,<3.0
+psycopg2-binary>=2.9
+# Recommended for migrations and the FastAPI backend:
+# alembic>=1.13
+# fastapi>=0.110
+# uvicorn[standard]>=0.29

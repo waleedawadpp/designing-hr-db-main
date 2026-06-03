@@ -148,5 +148,6 @@ vendor   1───* ai_forecast / marketing_campaign / ai_job
 | `queries.sql` | Common CRUD & query examples for application developers. |
 | `seed.sql`    | Minimal reference + sample data for local development. |
 | `ERD.md`      | Entity-relationship diagram (Mermaid, renders on GitHub). |
+| `orm/`        | SQLAlchemy 2.0 ORM models for the FastAPI backend (45 tables, parity-checked). |
 
 > This design is independent of the legacy HR database in `../SQL_commands/`.
