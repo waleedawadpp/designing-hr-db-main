@@ -28,11 +28,12 @@ backend/
 │       ├── cart.py        # view/add/remove cart items
 │       ├── orders.py      # checkout, payment confirm, order retrieval
 │       ├── ai.py          # product generator, recommendations, assistant
-│       └── shipments.py   # shipment creation + tracking timeline
+│       ├── shipments.py   # shipment creation + tracking timeline
+│       └── returns.py     # returns, refunds, restock, wallet debit
 │   └── services/
 │       └── ai.py          # pluggable AI provider (stub | anthropic)
 ├── alembic/               # migrations (initial applies ../schema.sql)
-├── tests/                 # pytest suite (auth, 2FA, RBAC, orders, AI, shipping)
+├── tests/                 # pytest suite (auth, RBAC, orders, AI, shipping, returns)
 ├── alembic.ini
 ├── Dockerfile
 └── requirements.txt
@@ -91,6 +92,19 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 | POST | `/shipments/{id}/events` | Post a tracking event — requires `order.manage` |
 | GET | `/shipments/{id}` | Shipment detail + tracking timeline (order owner) |
 | GET | `/orders/{id}/shipments` | All shipments for an order (order owner) |
+| POST | `/returns` | Request a return for a purchased item (buyer) |
+| GET | `/returns` | List the buyer's returns |
+| POST | `/returns/{id}/approve` · `/reject` | Resolve a return — requires `order.manage` |
+| POST | `/returns/{id}/complete` | Issue refund + restock + debit vendor — requires `order.manage` |
+
+## Returns & refunds
+
+A buyer requests a return (capped at the purchased quantity, only while the
+order is confirmed/shipped/delivered). Staff approve/reject; **completing** a
+return issues a `refund` for the returned line value, **restocks** inventory,
+**debits** the vendor wallet net of commission (a `wallet_transaction`), and
+advances the payment to `partially_refunded` / `refunded` (the order flips to
+`refunded` once fully covered).
 
 ## Shipping & tracking
 
@@ -144,15 +158,15 @@ export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
 pytest -v
 ```
 
-The suite (21 tests) covers registration, login, duplicate/invalid
-credentials, token-protected `/me`, the refresh flow, 2FA enable +
-enforcement, RBAC allow/deny, the full cart → checkout → payment flow
-(commission math, inventory reservation/deduction, vendor wallet credit,
-idempotent confirmation, owner-scoping), the AI layer (bilingual product
-generation + `ai_job` persistence, recommendations, assistant chat
-persistence + owner-scoping), and shipping/tracking (shipment lifecycle,
-order status roll-up, buyer tracking access, validation/permissions) — all
-green against PostgreSQL 16.
+The suite (24 tests) covers auth (registration, login, invalid/duplicate
+credentials, `/me`, refresh, 2FA enable + enforcement), RBAC allow/deny, the
+full cart → checkout → payment flow (commission, inventory
+reservation/deduction, vendor wallet credit, idempotency, owner-scoping), the
+AI layer (bilingual generation + `ai_job` persistence, recommendations, chat
+persistence + scoping), shipping/tracking (lifecycle, order roll-up, access),
+and returns/refunds (eligibility caps, approval flow, refund + restock +
+vendor wallet debit, partial vs. full refund roll-up) — all green against
+PostgreSQL 16.
 
 ## Continuous integration
 

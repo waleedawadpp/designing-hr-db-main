@@ -288,3 +288,34 @@ class ShipmentOut(BaseModel):
 
 class ShipmentDetail(ShipmentOut):
     events: list[ShipmentEventOut] = Field(default_factory=list)
+
+
+# ---- returns & refunds ----------------------------------------------------- #
+class ReturnCreateIn(BaseModel):
+    order_item_id: int
+    quantity: int = Field(ge=1)
+    reason: str | None = None
+
+
+class ReturnOut(BaseModel):
+    model_config = ORM
+    return_id: int
+    order_item_id: int
+    quantity: int
+    reason: str | None = None
+    status: str
+    created_at: dt.datetime
+    resolved_at: dt.datetime | None = None
+
+
+class RefundOut(BaseModel):
+    model_config = ORM
+    refund_id: int
+    payment_id: int
+    return_id: int | None = None
+    amount: Decimal
+    reason: str | None = None
+
+
+class ReturnResolved(ReturnOut):
+    refund: RefundOut | None = None
