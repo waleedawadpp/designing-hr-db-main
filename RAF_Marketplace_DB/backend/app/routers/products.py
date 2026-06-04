@@ -8,9 +8,13 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.config import settings
 from app.db import get_db
-from app.deps import require_permission
-from app.schemas import ProductCreate, ProductDetail, ProductListResponse, ProductOut
-from orm import AppUser, Product, ProductStatus
+from app.deps import get_current_user, require_permission
+from app.schemas import (
+    InventoryOut, InventoryUpdateIn, ProductCreate, ProductDetail,
+    ProductListResponse, ProductOut, VariantCreateIn, VariantOut, VariantUpdateIn,
+)
+from app.services.access import assert_vendor_access
+from orm import AppUser, Inventory, Product, ProductStatus, ProductVariant
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -70,6 +74,100 @@ def create_product(
 ):
     product = Product(**payload.model_dump(), status=ProductStatus.draft)
     db.add(product)
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+def _product_for_vendor_edit(db: Session, product_id: int, user: AppUser) -> Product:
+    product = db.get(Product, product_id)
+    if product is None or product.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    assert_vendor_access(db, user, product.vendor_id, admin_perm="product.moderate")
+    return product
+
+
+@router.post("/{product_id}/variants", response_model=VariantOut, status_code=201)
+def add_variant(
+    product_id: int,
+    payload: VariantCreateIn,
+    user: AppUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    product = _product_for_vendor_edit(db, product_id, user)
+    if db.scalar(select(ProductVariant).where(ProductVariant.sku == payload.sku)):
+        raise HTTPException(status_code=409, detail="SKU already exists")
+
+    variant = ProductVariant(
+        product_id=product.product_id, sku=payload.sku, price=payload.price,
+        barcode=payload.barcode, compare_at_price=payload.compare_at_price,
+        weight_grams=payload.weight_grams,
+    )
+    db.add(variant)
+    db.flush()
+    db.add(Inventory(
+        variant_id=variant.variant_id, quantity=payload.quantity,
+        low_stock_threshold=payload.low_stock_threshold,
+    ))
+    db.commit()
+    db.refresh(variant)
+    return variant
+
+
+@router.put("/variants/{variant_id}", response_model=VariantOut)
+def update_variant(
+    variant_id: int,
+    payload: VariantUpdateIn,
+    user: AppUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    variant = db.get(ProductVariant, variant_id)
+    if variant is None:
+        raise HTTPException(status_code=404, detail="Variant not found")
+    _product_for_vendor_edit(db, variant.product_id, user)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(variant, field, value)
+    db.commit()
+    db.refresh(variant)
+    return variant
+
+
+@router.put("/variants/{variant_id}/inventory", response_model=InventoryOut)
+def update_inventory(
+    variant_id: int,
+    payload: InventoryUpdateIn,
+    user: AppUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    variant = db.get(ProductVariant, variant_id)
+    if variant is None:
+        raise HTTPException(status_code=404, detail="Variant not found")
+    _product_for_vendor_edit(db, variant.product_id, user)
+    inv = db.get(Inventory, variant_id)
+    if inv is None:
+        inv = Inventory(variant_id=variant_id)
+        db.add(inv)
+    inv.quantity = payload.quantity
+    if payload.low_stock_threshold is not None:
+        inv.low_stock_threshold = payload.low_stock_threshold
+    db.commit()
+    db.refresh(inv)
+    return inv
+
+
+@router.post("/{product_id}/submit", response_model=ProductOut)
+def submit_for_review(
+    product_id: int,
+    user: AppUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Move a draft/rejected product to `pending` for admin moderation."""
+    product = _product_for_vendor_edit(db, product_id, user)
+    if product.status not in (ProductStatus.draft, ProductStatus.rejected):
+        raise HTTPException(status_code=409, detail=f"Cannot submit a {product.status.value} product")
+    if not db.scalar(select(ProductVariant).where(ProductVariant.product_id == product_id)):
+        raise HTTPException(status_code=400, detail="Add at least one variant before submitting")
+    product.status = ProductStatus.pending
     db.commit()
     db.refresh(product)
     return product

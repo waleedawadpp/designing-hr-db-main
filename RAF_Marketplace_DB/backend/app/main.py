@@ -6,8 +6,8 @@ from fastapi import FastAPI
 
 from app.config import settings
 from app.routers import (
-    addresses, ai, auth, cart, coupons, health, notifications, orders, products,
-    reports, returns, reviews, shipments, vendors, wishlist,
+    addresses, ai, auth, cart, coupons, health, moderation, notifications,
+    orders, products, reports, returns, reviews, shipments, vendors, wishlist,
 )
 
 app = FastAPI(title=settings.api_title, version=settings.api_version)
@@ -27,6 +27,7 @@ app.include_router(addresses.router)
 app.include_router(reports.router)
 app.include_router(coupons.router)
 app.include_router(notifications.router)
+app.include_router(moderation.router)
 
 
 @app.get("/", tags=["system"])

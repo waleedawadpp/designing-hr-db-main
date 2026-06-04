@@ -23,7 +23,8 @@ backend/
 │   └── routers/
 │       ├── health.py      # /health, /ready
 │       ├── auth.py        # register/login/refresh/me + 2FA
-│       ├── products.py    # list/search/get/create products
+│       ├── products.py    # list/search/get/create + variants/stock/submit
+│       ├── moderation.py  # admin product approve/reject/queue
 │       ├── vendors.py     # list/get/approve vendors
 │       ├── cart.py        # view/add/remove cart items
 │       ├── orders.py      # checkout, payment confirm, order retrieval
@@ -38,6 +39,7 @@ backend/
 │       └── notifications.py  # notification inbox + push devices
 │   └── services/
 │       ├── ai.py          # pluggable AI provider (stub | anthropic)
+│       ├── access.py      # shared vendor-access checks
 │       ├── coupons.py     # coupon validation + discount calculation
 │       └── notifications.py  # emit notifications on key events
 ├── alembic/               # migrations (initial applies ../schema.sql)
@@ -83,6 +85,11 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 | GET | `/products` | Published products; filters: `category_id`, `vendor_id`, `q`, pagination |
 | GET | `/products/{id}` | Product detail with variants |
 | POST | `/products` | Create a draft product — requires `product.create` permission |
+| POST | `/products/{id}/variants` | Add a SKU + stock (vendor owner/staff) |
+| PUT | `/products/variants/{id}` · `/products/variants/{id}/inventory` | Update price/active, set stock |
+| POST | `/products/{id}/submit` | Submit a draft for moderation (needs ≥1 variant) |
+| GET | `/admin/products` | Moderation queue — requires `product.moderate` |
+| POST | `/products/{id}/approve` · `/products/{id}/reject` | Moderate — requires `product.moderate` |
 | GET | `/vendors` | List vendors (approved by default) |
 | GET | `/vendors/{slug}` | Vendor by slug |
 | POST | `/vendors/{id}/approve` | Approve a vendor — requires `vendor.approve` permission |
@@ -208,7 +215,7 @@ export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
 pytest -v
 ```
 
-The suite (44 tests) covers auth (registration, login, invalid/duplicate
+The suite (48 tests) covers auth (registration, login, invalid/duplicate
 credentials, `/me`, refresh, 2FA enable + enforcement), RBAC allow/deny, the
 full cart → checkout → payment flow (commission, inventory
 reservation/deduction, vendor wallet credit, idempotency, owner-scoping), the
@@ -223,7 +230,9 @@ revenue, low-stock, platform monthly revenue with access control), and
 marketing (coupon creation permissions/duplicates, percent & fixed discounts
 at checkout, min-order and usage-limit enforcement), and notifications
 (event emission on order confirmation, mark-read/read-all, owner-scoping,
-idempotent device registration) — all green against PostgreSQL 16.
+idempotent device registration), and catalog management (variant/inventory
+edits, submit gating, admin approve/reject lifecycle, vendor-access control)
+— all green against PostgreSQL 16.
 
 ## Continuous integration
 

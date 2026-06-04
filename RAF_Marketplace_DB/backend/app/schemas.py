@@ -89,6 +89,36 @@ class ProductListResponse(Page):
     items: list[ProductOut]
 
 
+# ---- variant / inventory management ---------------------------------------- #
+class VariantCreateIn(BaseModel):
+    sku: str = Field(min_length=1, max_length=60)
+    price: Decimal = Field(ge=0)
+    barcode: str | None = Field(None, max_length=60)
+    compare_at_price: Decimal | None = None
+    weight_grams: int | None = None
+    quantity: int = Field(0, ge=0)
+    low_stock_threshold: int = Field(5, ge=0)
+
+
+class VariantUpdateIn(BaseModel):
+    price: Decimal | None = Field(None, ge=0)
+    compare_at_price: Decimal | None = None
+    is_active: bool | None = None
+
+
+class InventoryUpdateIn(BaseModel):
+    quantity: int = Field(ge=0)
+    low_stock_threshold: int | None = Field(None, ge=0)
+
+
+class InventoryOut(BaseModel):
+    model_config = ORM
+    variant_id: int
+    quantity: int
+    reserved: int
+    low_stock_threshold: int
+
+
 # ---- customers ------------------------------------------------------------- #
 class CustomerCreate(BaseModel):
     full_name: str = Field(min_length=1, max_length=120)
