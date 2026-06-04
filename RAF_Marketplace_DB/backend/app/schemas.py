@@ -392,3 +392,29 @@ class AddressOut(BaseModel):
     latitude: Decimal | None = None
     longitude: Decimal | None = None
     is_default: bool
+
+
+# ---- reports (view-backed) ------------------------------------------------- #
+class VendorRevenueReport(BaseModel):
+    vendor_id: int
+    orders_count: int
+    units_sold: int
+    gross_sales: Decimal
+    platform_commission: Decimal
+    net_vendor_earnings: Decimal
+
+
+class LowStockRow(BaseModel):
+    variant_id: int
+    product_id: int
+    name_en: str
+    sku: str
+    quantity: int
+    low_stock_threshold: int
+
+
+class MonthlyRevenueRow(BaseModel):
+    month: dt.date
+    orders_count: int
+    gross_revenue: Decimal
+    platform_commission: Decimal

@@ -32,7 +32,8 @@ backend/
 │       ├── returns.py     # returns, refunds, restock, wallet debit
 │       ├── reviews.py     # product reviews + rating recalculation
 │       ├── wishlist.py    # customer wishlist
-│       └── addresses.py   # customer address book
+│       ├── addresses.py   # customer address book
+│       └── reports.py     # vendor/platform reporting (view-backed)
 │   └── services/
 │       └── ai.py          # pluggable AI provider (stub | anthropic)
 ├── alembic/               # migrations (initial applies ../schema.sql)
@@ -104,6 +105,16 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 | DELETE | `/reviews/{id}` | Delete your own review (recomputes the rating) |
 | GET · POST · DELETE | `/wishlist` · `/wishlist/items` · `/wishlist/items/{product_id}` | Wishlist (idempotent add) |
 | GET · POST · PUT · DELETE | `/addresses` ·  `/addresses/{id}` | Address book (single default enforced) |
+| GET | `/vendors/{id}/reports/revenue` | Vendor sales/commission/earnings (owner/staff/admin) |
+| GET | `/vendors/{id}/reports/low-stock` | Variants at/under their restock threshold |
+| GET | `/reports/platform/monthly-revenue` | Platform revenue by month — requires `reports.platform` |
+
+## Reports
+
+Reporting endpoints query the analytics **views** from `../views.sql` (applied
+by Alembic migration `0002_reporting_views`). Vendor reports are visible to the
+vendor's owner/staff or a platform admin (`reports.platform`); platform-wide
+financials require `reports.platform`.
 
 ## Reviews & ratings
 
@@ -174,7 +185,7 @@ export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
 pytest -v
 ```
 
-The suite (28 tests) covers auth (registration, login, invalid/duplicate
+The suite (36 tests) covers auth (registration, login, invalid/duplicate
 credentials, `/me`, refresh, 2FA enable + enforcement), RBAC allow/deny, the
 full cart → checkout → payment flow (commission, inventory
 reservation/deduction, vendor wallet credit, idempotency, owner-scoping), the
@@ -184,8 +195,9 @@ returns/refunds (eligibility caps, approval flow, refund + restock + vendor
 wallet debit, partial vs. full refund roll-up), reviews (verified-purchase
 flag, rating recalculation, summary/distribution, one-per-user, delete), and
 the customer module (wishlist idempotency/removal, address CRUD with
-single-default enforcement and owner-scoping) — all green against
-PostgreSQL 16.
+single-default enforcement and owner-scoping), and reporting (view-backed
+vendor revenue, low-stock, platform monthly revenue with access control) —
+all green against PostgreSQL 16.
 
 ## Continuous integration
 

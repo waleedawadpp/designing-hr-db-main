@@ -26,13 +26,16 @@ SEED_VARIANT_PRICE = "10.000"
 SEED_INVENTORY_QTY = 50
 
 _SCHEMA_SQL = pathlib.Path(__file__).resolve().parents[2] / "schema.sql"
+_VIEWS_SQL = pathlib.Path(__file__).resolve().parents[2] / "views.sql"
 
 
 def _reset_schema() -> None:
     sql = _SCHEMA_SQL.read_text(encoding="utf-8").replace("BEGIN;", "").replace("COMMIT;", "")
+    views = _VIEWS_SQL.read_text(encoding="utf-8").replace("BEGIN;", "").replace("COMMIT;", "")
     with engine.begin() as conn:
         conn.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
         conn.execute(text(sql))
+        conn.execute(text(views))
 
 
 def _seed_rbac() -> None:
@@ -44,7 +47,7 @@ def _seed_rbac() -> None:
         }
         for key, (ar, en) in roles.items():
             db.add(Role(role_key=key, name_ar=ar, name_en=en))
-        for pk in ("product.create", "vendor.approve", "order.manage"):
+        for pk in ("product.create", "vendor.approve", "order.manage", "reports.platform"):
             db.add(Permission(perm_key=pk, description=pk))
         db.flush()
 
