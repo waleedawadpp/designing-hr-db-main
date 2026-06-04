@@ -98,6 +98,9 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 | GET | `/vendors/admin/queue` | Vendor approval queue — requires `vendor.approve` |
 | GET | `/vendors/{slug}` | Vendor by slug |
 | POST | `/vendors/{id}/approve` · `/reject` | Approve (grants owner store access) / reject — `vendor.approve` |
+| POST · GET | `/vendors/{id}/payouts` | Request a withdrawal / list (owner/staff/admin) |
+| GET | `/admin/payouts` | Payout queue — requires `payout.process` |
+| POST | `/payouts/{id}/approve` · `/reject` | Pay / refund a payout — requires `payout.process` |
 | GET | `/cart` | View the current user's cart with totals |
 | POST | `/cart/items` | Add/accumulate a variant in the cart |
 | DELETE | `/cart/items/{variant_id}` | Remove a line from the cart |
@@ -220,7 +223,7 @@ export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
 pytest -v
 ```
 
-The suite (58 tests) covers auth (registration, login, invalid/duplicate
+The suite (61 tests) covers auth (registration, login, invalid/duplicate
 credentials, `/me`, refresh, 2FA enable + enforcement), RBAC allow/deny, the
 full cart → checkout → payment flow (commission, inventory
 reservation/deduction, vendor wallet credit, idempotency, owner-scoping), the
@@ -241,8 +244,9 @@ and taxonomy (category/brand CRUD, slug-uniqueness, parent validation, public
 browsing, permission gating), and advanced search (brand filter, price range,
 in-stock filter, price/rating sorting, invalid-sort rejection), and vendor
 onboarding (application, duplicate/slug guards, approval queue, approval
-granting the owner store-management access, reject) — all green against
-PostgreSQL 16.
+granting the owner store-management access, reject), and payouts (request
+holding funds, over-balance rejection, approve, reject refunding the wallet,
+access control) — all green against PostgreSQL 16.
 
 ## Continuous integration
 

@@ -38,6 +38,23 @@ class VendorApplyIn(BaseModel):
     description_en: str | None = None
 
 
+class PayoutCreateIn(BaseModel):
+    amount: Decimal = Field(gt=0)
+    bank_iban: str | None = Field(None, max_length=34)
+
+
+class PayoutOut(BaseModel):
+    model_config = ORM
+    payout_id: int
+    vendor_id: int
+    amount: Decimal
+    currency: str
+    status: str
+    bank_iban: str | None = None
+    requested_at: dt.datetime
+    processed_at: dt.datetime | None = None
+
+
 # ---- catalog --------------------------------------------------------------- #
 class CategoryOut(BaseModel):
     model_config = ORM
