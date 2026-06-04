@@ -78,3 +78,54 @@ def test_chat_session_scoped_to_owner(client):
     r = client.post("/ai/assistant/chat", headers=b,
                     json={"message": "hijack", "chat_id": chat_id})
     assert r.status_code == 404
+
+
+def test_image_processing_records_job(client, db):
+    from orm import AIJob, AIJobStatus
+
+    h = _auth(client, "img@example.com")
+    r = client.post("/ai/images/process", headers=h, json={
+        "image_url": "https://cdn.example.com/p.jpg", "operation": "background_removal",
+    })
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["operation"] == "background_removal"
+    assert "ai=background_removal" in body["processed_url"]
+    job = db.get(AIJob, body["job_id"])
+    db.refresh(job)
+    assert job.status == AIJobStatus.succeeded and job.job_type.value == "image_processing"
+
+
+def test_image_processing_invalid_operation(client):
+    h = _auth(client, "img-bad@example.com")
+    assert client.post("/ai/images/process", headers=h, json={
+        "image_url": "x", "operation": "teleport"}).status_code == 422
+
+
+def test_forecast_generation_and_access(client, db):
+    # A fresh vendor-linked user can forecast their product; outsiders cannot.
+    from orm import (
+        AppUser, Inventory, Product, ProductStatus, ProductVariant, Role, VendorStaff,
+    )
+    h = _auth(client, "fc-vendor@example.com")
+    user = db.query(AppUser).filter_by(email="fc-vendor@example.com").one()
+    role = db.query(Role).filter_by(role_key="vendor_owner").one()
+    db.add(VendorStaff(vendor_id=1, user_id=user.user_id, role_id=role.role_id))
+    p = Product(vendor_id=1, name_ar="م", name_en="FC", slug="fc-product",
+                base_price="9.000", status=ProductStatus.published)
+    db.add(p)
+    db.flush()
+    v = ProductVariant(product_id=p.product_id, sku="FC-1", price="9.000")
+    db.add(v)
+    db.flush()
+    db.add(Inventory(variant_id=v.variant_id, quantity=10))
+    db.commit()
+
+    r = client.post(f"/ai/forecast/products/{p.product_id}?days=5", headers=h)
+    assert r.status_code == 200, r.text
+    rows = r.json()
+    assert len(rows) == 5
+    assert all(row["metric"] == "demand" for row in rows)
+
+    outsider = _auth(client, "fc-outsider@example.com")
+    assert client.post(f"/ai/forecast/products/{p.product_id}", headers=outsider).status_code == 403

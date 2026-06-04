@@ -5,13 +5,15 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from app.config import settings
+from app.middleware import ActivityLogMiddleware
 from app.routers import (
-    addresses, ai, auth, cart, coupons, health, moderation, notifications,
+    addresses, ai, audit, auth, cart, coupons, health, moderation, notifications,
     orders, payouts, products, reports, returns, reviews, shipments, taxonomy,
     vendors, wishlist,
 )
 
 app = FastAPI(title=settings.api_title, version=settings.api_version)
+app.add_middleware(ActivityLogMiddleware)
 
 app.include_router(health.router)
 app.include_router(auth.router)
@@ -31,6 +33,7 @@ app.include_router(notifications.router)
 app.include_router(moderation.router)
 app.include_router(taxonomy.router)
 app.include_router(payouts.router)
+app.include_router(audit.router)
 
 
 @app.get("/", tags=["system"])

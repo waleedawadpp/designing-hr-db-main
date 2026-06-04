@@ -111,6 +111,9 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 | POST | `/ai/products/generate` | Generate bilingual title/description/tags/SEO (records an `ai_job`) |
 | GET | `/ai/recommendations` | Trending/new product recommendations |
 | POST | `/ai/assistant/chat` | Shopping-assistant turn (persists the conversation) |
+| POST | `/ai/images/process` | AI image op (bg removal/enhance/optimize) → records an `ai_job` |
+| POST | `/ai/forecast/products/{id}` | Demand forecast from recent sales → `ai_forecast` rows |
+| GET | `/admin/activity` | Audit log of mutating requests — requires `reports.platform` |
 | POST | `/orders/{id}/shipments` | Create a shipment for a vendor's items — requires `order.manage` |
 | POST | `/shipments/{id}/events` | Post a tracking event — requires `order.manage` |
 | GET | `/shipments/{id}` | Shipment detail + tracking timeline (order owner) |
@@ -190,6 +193,9 @@ The AI endpoints sit behind a **pluggable provider** (`app/services/ai.py`):
 
 Every generation is recorded in `ai_job` (input/output/status/model); the
 shopping assistant persists turns to `ai_chat_session` / `ai_chat_message`.
+Image operations and demand forecasts are likewise recorded (`ai_job` /
+`ai_forecast`). Every mutating request is captured in `activity_log` by an
+audit middleware (viewable at `/admin/activity`).
 
 ## Checkout & payments
 
@@ -223,7 +229,7 @@ export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
 pytest -v
 ```
 
-The suite (61 tests) covers auth (registration, login, invalid/duplicate
+The suite (66 tests) covers auth (registration, login, invalid/duplicate
 credentials, `/me`, refresh, 2FA enable + enforcement), RBAC allow/deny, the
 full cart → checkout → payment flow (commission, inventory
 reservation/deduction, vendor wallet credit, idempotency, owner-scoping), the
@@ -246,7 +252,9 @@ in-stock filter, price/rating sorting, invalid-sort rejection), and vendor
 onboarding (application, duplicate/slug guards, approval queue, approval
 granting the owner store-management access, reject), and payouts (request
 holding funds, over-balance rejection, approve, reject refunding the wallet,
-access control) — all green against PostgreSQL 16.
+access control), AI image processing + demand forecasting (job persistence,
+invalid-op handling, vendor-scoped access), and audit logging (mutating
+requests recorded, admin-only viewer) — all green against PostgreSQL 16.
 
 ## Continuous integration
 

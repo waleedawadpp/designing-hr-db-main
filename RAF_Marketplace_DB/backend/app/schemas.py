@@ -338,6 +338,28 @@ class ChatOut(BaseModel):
     suggested_product_ids: list[int] = Field(default_factory=list)
 
 
+class ImageProcessIn(BaseModel):
+    image_url: str = Field(min_length=1)
+    operation: str = Field(description="background_removal | enhance | optimize | marketing")
+    product_image_id: int | None = Field(None, description="Optionally update this product image")
+
+
+class ImageProcessOut(BaseModel):
+    job_id: int
+    operation: str
+    processed_url: str
+
+
+class ForecastRow(BaseModel):
+    model_config = ORM
+    forecast_id: int
+    product_id: int | None = None
+    metric: str
+    horizon_date: dt.date
+    predicted_value: Decimal
+    confidence: Decimal | None = None
+
+
 # ---- shipping & tracking --------------------------------------------------- #
 class ShipmentCreateIn(BaseModel):
     vendor_id: int

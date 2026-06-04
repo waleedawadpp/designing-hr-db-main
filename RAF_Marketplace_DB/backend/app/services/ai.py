@@ -29,12 +29,17 @@ def _keywords(*parts: str | None, limit: int = 8) -> list[str]:
     return words[:limit]
 
 
+_IMAGE_OPERATIONS = {"background_removal", "enhance", "optimize", "marketing"}
+
+
 class AIProvider(Protocol):
     def generate_product_content(
         self, *, name_hint: str | None, category: str | None, details: str | None
     ) -> dict: ...
 
     def assistant_reply(self, history: list[dict], suggestions: list[dict]) -> str: ...
+
+    def process_image(self, *, image_url: str, operation: str) -> dict: ...
 
 
 class StubAIProvider:
@@ -65,6 +70,17 @@ class StubAIProvider:
             "tags": tags,
             "seo_title": f"{title_en} | RAF Marketplace",
             "seo_description": desc_en[:160],
+        }
+
+    def process_image(self, *, image_url: str, operation: str) -> dict:
+        if operation not in _IMAGE_OPERATIONS:
+            raise ValueError(f"Unsupported operation: {operation}")
+        sep = "&" if "?" in image_url else "?"
+        return {
+            "operation": operation,
+            "processed_url": f"{image_url}{sep}ai={operation}",
+            "width": 1024,
+            "height": 1024,
         }
 
     def assistant_reply(self, history: list[dict], suggestions: list[dict]) -> str:
@@ -122,6 +138,12 @@ class AnthropicAIProvider:
             messages=[{"role": m["role"], "content": m["content"]} for m in history],
         )
         return msg.content[0].text
+
+    def process_image(self, *, image_url, operation) -> dict:  # pragma: no cover
+        # A real implementation would call an image model / pipeline here.
+        if operation not in _IMAGE_OPERATIONS:
+            raise ValueError(f"Unsupported operation: {operation}")
+        return {"operation": operation, "processed_url": image_url}
 
 
 def get_ai_provider() -> AIProvider:

@@ -18,12 +18,15 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import get_current_user
 from app.schemas import (
-    ChatIn, ChatOut, ProductGenIn, ProductGenOut, RecommendationOut,
+    ChatIn, ChatOut, ForecastRow, ImageProcessIn, ImageProcessOut, ProductGenIn,
+    ProductGenOut, RecommendationOut,
 )
 from app.services.ai import get_ai_provider
+from app.services.access import assert_vendor_access
 from orm import (
-    AIChatMessage, AIChatSession, AIJob, AIJobStatus, AIJobType, AppUser,
-    OrderItem, Product, ProductStatus, ProductVariant,
+    AIChatMessage, AIChatSession, AIForecast, AIJob, AIJobStatus, AIJobType,
+    AppUser, CustomerOrder, OrderItem, Product, ProductImage, ProductStatus,
+    ProductVariant,
 )
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -150,3 +153,85 @@ def assistant_chat(
         chat_id=session.chat_id, reply=reply,
         suggested_product_ids=[s["product_id"] for s in suggestions],
     )
+
+
+@router.post("/images/process", response_model=ImageProcessOut)
+def process_image(
+    payload: ImageProcessIn,
+    user: AppUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Run an AI image operation (background removal/enhance/optimize/marketing)."""
+    provider = get_ai_provider()
+    job = AIJob(
+        job_type=AIJobType.image_processing, status=AIJobStatus.running,
+        requested_by=user.user_id, input=payload.model_dump(),
+        model=getattr(provider, "model", None),
+    )
+    db.add(job)
+    db.flush()
+    try:
+        result = provider.process_image(image_url=payload.image_url, operation=payload.operation)
+    except ValueError as exc:
+        job.status = AIJobStatus.failed
+        job.error = str(exc)
+        job.completed_at = dt.datetime.now(dt.timezone.utc)
+        db.commit()
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    # Optionally write the result back onto a product image (with vendor access).
+    if payload.product_image_id is not None:
+        image = db.get(ProductImage, payload.product_image_id)
+        if image is None:
+            raise HTTPException(status_code=404, detail="Product image not found")
+        product = db.get(Product, image.product_id)
+        assert_vendor_access(db, user, product.vendor_id, admin_perm="product.moderate")
+        image.url = result["processed_url"]
+        image.is_ai_processed = True
+        job.entity_type = "product_image"
+        job.entity_id = str(image.image_id)
+
+    job.status = AIJobStatus.succeeded
+    job.output = result
+    job.completed_at = dt.datetime.now(dt.timezone.utc)
+    db.commit()
+    return ImageProcessOut(job_id=job.job_id, operation=result["operation"],
+                           processed_url=result["processed_url"])
+
+
+@router.post("/forecast/products/{product_id}", response_model=list[ForecastRow])
+def generate_forecast(
+    product_id: int,
+    user: AppUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    days: int = Query(7, ge=1, le=90),
+):
+    """Naive demand forecast from the product's recent sales velocity."""
+    product = db.get(Product, product_id)
+    if product is None or product.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    assert_vendor_access(db, user, product.vendor_id, admin_perm="reports.platform")
+
+    since = dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=30)
+    recent_units = db.scalar(
+        select(func.coalesce(func.sum(OrderItem.quantity), 0))
+        .join(ProductVariant, ProductVariant.sku == OrderItem.sku)
+        .join(CustomerOrder, CustomerOrder.order_id == OrderItem.order_id)
+        .where(ProductVariant.product_id == product_id, CustomerOrder.placed_at >= since)
+    )
+    daily = (Decimal(int(recent_units)) / Decimal(30)).quantize(Decimal("0.001"))
+
+    today = dt.date.today()
+    rows: list[AIForecast] = []
+    for i in range(1, days + 1):
+        f = AIForecast(
+            vendor_id=product.vendor_id, product_id=product_id, metric="demand",
+            horizon_date=today + dt.timedelta(days=i), predicted_value=daily,
+            confidence=Decimal("0.60"),
+        )
+        db.add(f)
+        rows.append(f)
+    db.commit()
+    for f in rows:
+        db.refresh(f)
+    return rows
