@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.db import get_db
 from app.deps import get_current_user
 from app.schemas import CheckoutIn, OrderOut, OrderWithPayment, PaymentOut
+from app.services.coupons import apply_coupon
 from orm import (
     AppUser, Cart, CartItem, CustomerOrder, Inventory, OrderItem, OrderStatus,
     Payment, PaymentGateway, PaymentStatus, Product, ProductVariant, Vendor,
@@ -93,7 +94,18 @@ def checkout(
         ))
 
     order.subtotal = subtotal
-    order.grand_total = subtotal  # + shipping/tax - discount (0 for now)
+
+    discount = Decimal("0")
+    if payload.coupon_code:
+        vendor_subtotals: dict[int, Decimal] = {}
+        for _ci, variant, _product, vendor, _inv in rows:
+            vendor_subtotals[vendor.vendor_id] = (
+                vendor_subtotals.get(vendor.vendor_id, Decimal("0")) + variant.price * _ci.quantity
+            )
+        discount, coupon = apply_coupon(db, payload.coupon_code, subtotal, vendor_subtotals)
+        coupon.used_count += 1
+    order.discount_total = discount
+    order.grand_total = subtotal - discount  # + shipping/tax (0 for now)
 
     payment = Payment(
         order_id=order.order_id, gateway=gateway,

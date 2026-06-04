@@ -178,6 +178,7 @@ class CartOut(BaseModel):
 class CheckoutIn(BaseModel):
     shipping_address_id: int | None = None
     gateway: str = Field(description="thawani | omannet | stripe | paypal | cod")
+    coupon_code: str | None = Field(None, description="Optional discount code")
 
 
 class OrderItemOut(BaseModel):
@@ -207,6 +208,7 @@ class OrderOut(BaseModel):
     status: str
     currency: str
     subtotal: Decimal
+    discount_total: Decimal
     grand_total: Decimal
     items: list[OrderItemOut] = Field(default_factory=list)
 
@@ -392,6 +394,31 @@ class AddressOut(BaseModel):
     latitude: Decimal | None = None
     longitude: Decimal | None = None
     is_default: bool
+
+
+# ---- marketing: coupons ---------------------------------------------------- #
+class CouponCreateIn(BaseModel):
+    code: str = Field(min_length=1, max_length=40)
+    discount_type: str = Field(description="percent | fixed")
+    discount_value: Decimal = Field(gt=0)
+    vendor_id: int | None = None
+    min_order_total: Decimal | None = None
+    usage_limit: int | None = Field(None, ge=1)
+    valid_from: dt.datetime | None = None
+    valid_until: dt.datetime | None = None
+
+
+class CouponOut(BaseModel):
+    model_config = ORM
+    coupon_id: int
+    code: str
+    discount_type: str
+    discount_value: Decimal
+    vendor_id: int | None = None
+    min_order_total: Decimal | None = None
+    usage_limit: int | None = None
+    used_count: int
+    is_active: bool
 
 
 # ---- reports (view-backed) ------------------------------------------------- #

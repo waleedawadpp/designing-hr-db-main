@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from tests.conftest import SEED_INVENTORY_QTY, SEED_VARIANT_SKU
+from tests.conftest import SEED_VARIANT_SKU
 
 
 def money(value) -> Decimal:
@@ -59,9 +59,18 @@ def test_checkout_empty_cart_rejected(client):
 def test_full_checkout_and_payment_flow(client, db):
     from orm import Inventory, VendorWallet
 
+    from orm import Product, ProductVariant
+
     h = _auth(client, "flow@example.com")
     vid = _variant_id(db)
     qty = 3
+    # Baseline (the seed variant/vendor is shared across the suite).
+    db.expire_all()
+    inv0 = db.get(Inventory, vid)
+    q0, r0 = inv0.quantity, inv0.reserved
+    vendor_id0 = db.get(Product, db.get(ProductVariant, vid).product_id).vendor_id
+    wallet0 = db.get(VendorWallet, vendor_id0)
+    balance0 = wallet0.available_balance if wallet0 else Decimal("0")
     client.post("/cart/items", json={"variant_id": vid, "quantity": qty}, headers=h)
 
     # Checkout
@@ -76,9 +85,10 @@ def test_full_checkout_and_payment_flow(client, db):
     order_id = order["order_id"]
 
     # Stock is reserved, not yet deducted.
-    inv = db.get(Inventory, vid); db.refresh(inv)
-    assert inv.quantity == SEED_INVENTORY_QTY
-    assert inv.reserved == qty
+    db.expire_all()
+    inv = db.get(Inventory, vid)
+    assert inv.quantity == q0
+    assert inv.reserved == r0 + qty
     vendor_id = order["items"][0]["vendor_id"]
 
     # Cart is now empty.
@@ -91,21 +101,20 @@ def test_full_checkout_and_payment_flow(client, db):
     assert confirmed["status"] == "confirmed"
     assert confirmed["payment"]["status"] == "paid"
 
-    # Stock deducted, reservation released.
+    # Stock deducted, reservation released back to baseline.
     db.expire_all()
     inv = db.get(Inventory, vid)
-    assert inv.quantity == SEED_INVENTORY_QTY - qty
-    assert inv.reserved == 0
+    assert inv.quantity == q0 - qty
+    assert inv.reserved == r0
 
     # Vendor credited net of 10% commission: 30.000 - 3.000 = 27.000
-    wallet = db.get(VendorWallet, vendor_id)
-    assert wallet.available_balance == Decimal("27.000")
+    assert db.get(VendorWallet, vendor_id).available_balance == balance0 + Decimal("27.000")
 
     # Confirming again is idempotent.
     r = client.post(f"/orders/{order_id}/pay/confirm", headers=h)
     assert r.status_code == 200
     db.expire_all()
-    assert db.get(VendorWallet, vendor_id).available_balance == Decimal("27.000")
+    assert db.get(VendorWallet, vendor_id).available_balance == balance0 + Decimal("27.000")
 
 
 def test_orders_are_scoped_to_owner(client, db):
