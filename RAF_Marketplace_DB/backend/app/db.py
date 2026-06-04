@@ -21,7 +21,18 @@ if str(_DB_ROOT) not in sys.path:
 
 from app.config import settings  # noqa: E402
 
-engine = create_engine(settings.database_url, pool_pre_ping=True, future=True)
+
+def _normalize_db_url(url: str) -> str:
+    """Accept managed-host URLs (e.g. Render's `postgres://...`) and ensure the
+    psycopg2 driver is used."""
+    if url.startswith("postgres://"):
+        url = "postgresql+psycopg2://" + url[len("postgres://"):]
+    elif url.startswith("postgresql://"):
+        url = "postgresql+psycopg2://" + url[len("postgresql://"):]
+    return url
+
+
+engine = create_engine(_normalize_db_url(settings.database_url), pool_pre_ping=True, future=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False, future=True)
 
 

@@ -32,6 +32,13 @@ services:
     environment:
       RAF_DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/raf_marketplace
       RAF_REDIS_URL: redis://redis:6379/0
+      # Override these in production (e.g. a .env file next to this compose):
+      RAF_JWT_SECRET: ${RAF_JWT_SECRET:-change-me-in-production}
+      RAF_CORS_ORIGINS: ${RAF_CORS_ORIGINS:-*}
+      RAF_AI_PROVIDER: ${RAF_AI_PROVIDER:-stub}
+      RAF_ANTHROPIC_API_KEY: ${RAF_ANTHROPIC_API_KEY:-}
+      RAF_SEED_ADMIN_EMAIL: ${RAF_SEED_ADMIN_EMAIL:-}
+      RAF_SEED_ADMIN_PASSWORD: ${RAF_SEED_ADMIN_PASSWORD:-}
     depends_on:
       db:
         condition: service_healthy

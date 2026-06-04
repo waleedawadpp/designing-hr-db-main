@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     default_page_size: int = 24
     max_page_size: int = 100
 
+    # CORS — comma-separated origins, or "*" for all (dev only)
+    cors_origins: str = "*"
+
+    # Production bootstrap (optional): seed roles/permissions + a first admin
+    seed_admin_email: str | None = None
+    seed_admin_password: str | None = None
+    seed_admin_name: str = "Administrator"
+
     # AI layer
     ai_provider: str = "stub"            # "stub" | "anthropic"
     ai_model: str = "claude-sonnet-4-6"  # used when ai_provider="anthropic"

@@ -20,5 +20,5 @@ COPY backend/ ./backend/
 WORKDIR /app/backend
 EXPOSE 8000
 
-# Apply migrations, then serve.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Apply migrations, seed RBAC + admin (idempotent), then serve.
+CMD ["sh", "-c", "alembic upgrade head && python -m app.seed_prod && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

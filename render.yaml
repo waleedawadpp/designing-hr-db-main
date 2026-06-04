@@ -1,0 +1,39 @@
+# Render Blueprint for the RAF Marketplace API.
+# Render → New + → Blueprint → pick this repo. It provisions a Dockerized web
+# service + a managed PostgreSQL database and wires them together.
+#
+# After the first deploy, set RAF_SEED_ADMIN_EMAIL / RAF_SEED_ADMIN_PASSWORD in
+# the service's Environment to create the first administrator (then redeploy).
+
+services:
+  - type: web
+    name: raf-marketplace-api
+    runtime: docker
+    repo: https://github.com/waleedawadpp/designing-hr-db-main
+    branch: main
+    dockerfilePath: RAF_Marketplace_DB/backend/Dockerfile
+    dockerContext: RAF_Marketplace_DB
+    healthCheckPath: /health
+    plan: starter
+    region: frankfurt
+    envVars:
+      - key: RAF_DATABASE_URL
+        fromDatabase:
+          name: raf-marketplace-db
+          property: connectionString
+      - key: RAF_JWT_SECRET
+        generateValue: true            # Render generates a strong secret
+      - key: RAF_CORS_ORIGINS
+        value: "*"                      # tighten to your frontend domain later
+      - key: RAF_AI_PROVIDER
+        value: stub                     # set to "anthropic" + key to use Claude
+      - key: RAF_SEED_ADMIN_EMAIL
+        sync: false                     # set in the dashboard
+      - key: RAF_SEED_ADMIN_PASSWORD
+        sync: false                     # set in the dashboard
+
+databases:
+  - name: raf-marketplace-db
+    databaseName: raf_marketplace
+    plan: basic-256mb
+    region: frankfurt
