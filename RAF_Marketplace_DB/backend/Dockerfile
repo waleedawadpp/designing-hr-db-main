@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -r backend/requirements.txt
 # ORM package + canonical SQL (consumed by the initial migration) + app
 COPY orm/ ./orm/
 COPY schema.sql ./schema.sql
+COPY views.sql ./views.sql
 COPY backend/ ./backend/
 
 WORKDIR /app/backend
