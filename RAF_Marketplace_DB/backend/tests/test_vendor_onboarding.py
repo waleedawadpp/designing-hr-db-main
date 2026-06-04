@@ -83,3 +83,35 @@ def test_reject_and_requires_pending(client, db):
     assert client.post(f"/vendors/{vendor_id}/reject", headers=admin).json()["status"] == "rejected"
     # Re-reviewing a non-pending vendor is a conflict.
     assert client.post(f"/vendors/{vendor_id}/approve", headers=admin).status_code == 409
+
+
+def test_vendor_staff_management(client, db):
+    owner = _auth(client, "staff-owner@example.com")
+    vendor_id = _apply(client, owner, "staff-store").json()["vendor_id"]
+    admin = _admin(client, db, "staff-admin@example.com")
+    client.post(f"/vendors/{vendor_id}/approve", headers=admin)
+
+    # Register a teammate, then the owner adds them as staff.
+    _auth(client, "teammate@example.com")
+    r = client.post(f"/vendors/{vendor_id}/staff", headers=owner,
+                    json={"email": "teammate@example.com", "role_key": "vendor_staff"})
+    assert r.status_code == 201, r.text
+    emails = {s["email"] for s in r.json()}
+    assert "teammate@example.com" in emails and "staff-owner@example.com" in emails
+
+    # Validation: unknown user, bad role.
+    assert client.post(f"/vendors/{vendor_id}/staff", headers=owner,
+                       json={"email": "ghost@example.com", "role_key": "vendor_staff"}).status_code == 404
+    assert client.post(f"/vendors/{vendor_id}/staff", headers=owner,
+                       json={"email": "teammate@example.com", "role_key": "superuser"}).status_code == 422
+
+    # An outsider cannot manage staff.
+    outsider = _auth(client, "staff-outsider@example.com")
+    assert client.get(f"/vendors/{vendor_id}/staff", headers=outsider).status_code == 403
+
+    # Remove the teammate; owner cannot be removed.
+    teammate_id = next(s["user_id"] for s in client.get(f"/vendors/{vendor_id}/staff", headers=owner).json()
+                       if s["email"] == "teammate@example.com")
+    assert client.delete(f"/vendors/{vendor_id}/staff/{teammate_id}", headers=owner).status_code == 204
+    owner_id = db.query(__import__("orm").Vendor).filter_by(vendor_id=vendor_id).one().owner_user_id
+    assert client.delete(f"/vendors/{vendor_id}/staff/{owner_id}", headers=owner).status_code == 400

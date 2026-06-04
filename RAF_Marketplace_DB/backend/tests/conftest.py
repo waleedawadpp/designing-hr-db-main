@@ -43,6 +43,7 @@ def _seed_rbac() -> None:
         roles = {
             "customer": ("عميل", "Customer"),
             "vendor_owner": ("صاحب متجر", "Vendor Owner"),
+            "vendor_staff": ("موظف متجر", "Vendor Staff"),
             "admin": ("مدير", "Administrator"),
         }
         for key, (ar, en) in roles.items():

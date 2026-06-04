@@ -38,6 +38,18 @@ class VendorApplyIn(BaseModel):
     description_en: str | None = None
 
 
+class StaffAddIn(BaseModel):
+    email: EmailStr
+    role_key: str = Field(description="vendor_owner | vendor_staff")
+
+
+class StaffOut(BaseModel):
+    user_id: int
+    full_name: str
+    email: str
+    role_key: str
+
+
 class PayoutCreateIn(BaseModel):
     amount: Decimal = Field(gt=0)
     bank_iban: str | None = Field(None, max_length=34)

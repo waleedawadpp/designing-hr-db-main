@@ -1,13 +1,15 @@
 # RAF Marketplace — FastAPI backend
 
-A runnable FastAPI skeleton on top of the `../orm` SQLAlchemy models, with
-**Alembic** migrations and **Docker Compose** for local development. It
-demonstrates the spec's Python/FastAPI/PostgreSQL/Redis stack.
+A full FastAPI backend on top of the `../orm` SQLAlchemy models, with
+**Alembic** migrations and **Docker Compose** for local development —
+implementing the spec's Python/FastAPI/PostgreSQL/Redis stack.
 
-> This is a foundation: catalog/vendor endpoints, health checks, pagination,
-> bilingual search, and migration wiring. Auth (JWT/2FA), payments, shipping,
-> and the AI services are scoped in the database design and meant to be built
-> on this scaffold.
+> Implemented end-to-end and covered by tests: auth (JWT/2FA) + RBAC, the
+> catalog (products, variants, inventory, images, search) and moderation,
+> vendor onboarding/staff/payouts, cart → checkout → payment with commission,
+> shipping + tracking, returns/refunds, reviews, wishlist/addresses,
+> reporting, coupons, notifications, the AI layer (generation, recommendations,
+> assistant, image processing, forecasting, marketing), and audit logging.
 
 ## Layout
 
@@ -100,6 +102,7 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 | GET | `/vendors/admin/queue` | Vendor approval queue — requires `vendor.approve` |
 | GET | `/vendors/{slug}` | Vendor by slug |
 | POST | `/vendors/{id}/approve` · `/reject` | Approve (grants owner store access) / reject — `vendor.approve` |
+| GET · POST · DELETE | `/vendors/{id}/staff` (+ `/{user_id}`) | Manage store staff (owner/admin) |
 | POST · GET | `/vendors/{id}/payouts` | Request a withdrawal / list (owner/staff/admin) |
 | GET | `/admin/payouts` | Payout queue — requires `payout.process` |
 | POST | `/payouts/{id}/approve` · `/reject` | Pay / refund a payout — requires `payout.process` |
@@ -233,7 +236,7 @@ export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
 pytest -v
 ```
 
-The suite (70 tests) covers auth (registration, login, invalid/duplicate
+The suite (71 tests) covers auth (registration, login, invalid/duplicate
 credentials, `/me`, refresh, 2FA enable + enforcement), RBAC allow/deny, the
 full cart → checkout → payment flow (commission, inventory
 reservation/deduction, vendor wallet credit, idempotency, owner-scoping), the

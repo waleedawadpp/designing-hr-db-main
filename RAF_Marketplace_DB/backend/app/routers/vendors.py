@@ -9,12 +9,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.deps import get_current_user, require_permission
-from app.schemas import VendorApplyIn, VendorOut
+from app.deps import get_current_user, require_permission, user_permissions
+from app.schemas import StaffAddIn, StaffOut, VendorApplyIn, VendorOut
 from app.services.notifications import notify
 from orm import (
     AppUser, Role, UserRole, Vendor, VendorStaff, VendorStatus, VendorWallet,
 )
+
+_STAFF_ROLES = ("vendor_owner", "vendor_staff")
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
 
@@ -139,3 +141,75 @@ def reject_vendor(
     db.commit()
     db.refresh(vendor)
     return vendor
+
+
+def _assert_vendor_owner(db: Session, user: AppUser, vendor_id: int) -> Vendor:
+    """Only the store owner (or a platform admin) may manage staff."""
+    vendor = db.get(Vendor, vendor_id)
+    if vendor is None or vendor.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+    if "vendor.approve" in user_permissions(db, user.user_id):
+        return vendor
+    if vendor.owner_user_id != user.user_id:
+        raise HTTPException(status_code=403, detail="Only the store owner can manage staff")
+    return vendor
+
+
+@router.get("/{vendor_id}/staff", response_model=list[StaffOut])
+def list_staff(
+    vendor_id: int,
+    user: AppUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _assert_vendor_owner(db, user, vendor_id)
+    rows = db.execute(
+        select(AppUser, Role.role_key)
+        .join(VendorStaff, VendorStaff.user_id == AppUser.user_id)
+        .join(Role, Role.role_id == VendorStaff.role_id)
+        .where(VendorStaff.vendor_id == vendor_id)
+        .order_by(AppUser.full_name)
+    ).all()
+    return [
+        StaffOut(user_id=u.user_id, full_name=u.full_name, email=str(u.email), role_key=rk)
+        for u, rk in rows
+    ]
+
+
+@router.post("/{vendor_id}/staff", response_model=list[StaffOut], status_code=201)
+def add_staff(
+    vendor_id: int,
+    payload: StaffAddIn,
+    user: AppUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _assert_vendor_owner(db, user, vendor_id)
+    if payload.role_key not in _STAFF_ROLES:
+        raise HTTPException(status_code=422, detail=f"role_key must be one of {_STAFF_ROLES}")
+    member = db.scalar(select(AppUser).where(AppUser.email == payload.email))
+    if member is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    role = db.scalar(select(Role).where(Role.role_key == payload.role_key))
+
+    if db.get(VendorStaff, {"vendor_id": vendor_id, "user_id": member.user_id}) is None:
+        db.add(VendorStaff(vendor_id=vendor_id, user_id=member.user_id, role_id=role.role_id))
+    # Grant the matching global role so store permissions apply.
+    if db.get(UserRole, {"user_id": member.user_id, "role_id": role.role_id}) is None:
+        db.add(UserRole(user_id=member.user_id, role_id=role.role_id))
+    db.commit()
+    return list_staff(vendor_id, user, db)
+
+
+@router.delete("/{vendor_id}/staff/{user_id}", status_code=204)
+def remove_staff(
+    vendor_id: int,
+    user_id: int,
+    user: AppUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    vendor = _assert_vendor_owner(db, user, vendor_id)
+    if user_id == vendor.owner_user_id:
+        raise HTTPException(status_code=400, detail="Cannot remove the store owner")
+    link = db.get(VendorStaff, {"vendor_id": vendor_id, "user_id": user_id})
+    if link is not None:
+        db.delete(link)
+        db.commit()
