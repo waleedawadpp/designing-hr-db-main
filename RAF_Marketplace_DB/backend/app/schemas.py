@@ -158,6 +158,19 @@ class ProductCreate(BaseModel):
     tags: list[str] | None = None
 
 
+class ProductUpdateIn(BaseModel):
+    category_id: int | None = None
+    brand_id: int | None = None
+    name_ar: str | None = Field(None, min_length=1, max_length=200)
+    name_en: str | None = Field(None, min_length=1, max_length=200)
+    description_ar: str | None = None
+    description_en: str | None = None
+    base_price: Decimal | None = Field(None, ge=0)
+    tags: list[str] | None = None
+    seo_title: str | None = Field(None, max_length=200)
+    seo_description: str | None = None
+
+
 class ProductListResponse(Page):
     items: list[ProductOut]
 

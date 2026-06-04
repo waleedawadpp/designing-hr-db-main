@@ -132,3 +132,21 @@ def test_product_images_crud(client, db):
 
     assert client.delete(f"/products/images/{img_id}", headers=vendor).status_code == 204
     assert client.get(f"/products/{pid}/images").json() == []
+
+
+def test_product_update(client, db):
+    vendor = _vendor_user(client, db, "upd-vendor@example.com")
+    pid = _new_product(client, vendor, "upd-product")["product_id"]
+
+    r = client.put(f"/products/{pid}", headers=vendor, json={
+        "name_en": "Renamed", "base_price": "12.500", "tags": ["a", "b"]})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["name_en"] == "Renamed"
+    assert body["base_price"] == "12.500"
+    assert body["tags"] == ["a", "b"]
+
+    # Outsider cannot edit.
+    outsider = _auth(client, "upd-outsider@example.com")
+    assert client.put(f"/products/{pid}", headers=outsider,
+                      json={"name_en": "Hacked"}).status_code in (403, 404)

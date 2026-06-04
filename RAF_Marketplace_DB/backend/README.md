@@ -233,7 +233,7 @@ export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
 pytest -v
 ```
 
-The suite (69 tests) covers auth (registration, login, invalid/duplicate
+The suite (70 tests) covers auth (registration, login, invalid/duplicate
 credentials, `/me`, refresh, 2FA enable + enforcement), RBAC allow/deny, the
 full cart → checkout → payment flow (commission, inventory
 reservation/deduction, vendor wallet credit, idempotency, owner-scoping), the

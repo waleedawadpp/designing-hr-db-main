@@ -14,7 +14,7 @@ from app.deps import get_current_user, require_permission
 from app.schemas import (
     InventoryOut, InventoryUpdateIn, ProductCreate, ProductDetail,
     ProductImageIn, ProductImageOut, ProductListResponse, ProductOut,
-    VariantCreateIn, VariantOut, VariantUpdateIn,
+    ProductUpdateIn, VariantCreateIn, VariantOut, VariantUpdateIn,
 )
 from app.services.access import assert_vendor_access
 from orm import AppUser, Inventory, Product, ProductImage, ProductStatus, ProductVariant
@@ -117,6 +117,21 @@ def _product_for_vendor_edit(db: Session, product_id: int, user: AppUser) -> Pro
     if product is None or product.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Product not found")
     assert_vendor_access(db, user, product.vendor_id, admin_perm="product.moderate")
+    return product
+
+
+@router.put("/{product_id}", response_model=ProductDetail)
+def update_product(
+    product_id: int,
+    payload: ProductUpdateIn,
+    user: AppUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    product = _product_for_vendor_edit(db, product_id, user)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(product, field, value)
+    db.commit()
+    db.refresh(product)
     return product
 
 
