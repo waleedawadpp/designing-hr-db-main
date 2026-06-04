@@ -48,7 +48,8 @@ def _seed_rbac() -> None:
         for key, (ar, en) in roles.items():
             db.add(Role(role_key=key, name_ar=ar, name_en=en))
         for pk in ("product.create", "vendor.approve", "order.manage",
-                   "reports.platform", "marketing.manage", "product.moderate"):
+                   "reports.platform", "marketing.manage", "product.moderate",
+                   "catalog.manage"):
             db.add(Permission(perm_key=pk, description=pk))
         db.flush()
 

@@ -25,6 +25,7 @@ backend/
 │       ├── auth.py        # register/login/refresh/me + 2FA
 │       ├── products.py    # list/search/get/create + variants/stock/submit
 │       ├── moderation.py  # admin product approve/reject/queue
+│       ├── taxonomy.py    # category & brand browsing + admin CRUD
 │       ├── vendors.py     # list/get/approve vendors
 │       ├── cart.py        # view/add/remove cart items
 │       ├── orders.py      # checkout, payment confirm, order retrieval
@@ -82,6 +83,8 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 | GET | `/auth/me` | Current user (requires Bearer token) |
 | POST | `/auth/2fa/setup` | Generate a TOTP secret + `otpauth://` URI |
 | POST | `/auth/2fa/enable` · `/auth/2fa/disable` | Turn 2FA on/off (verifies a code) |
+| GET | `/categories` · `/brands` | Public taxonomy browsing |
+| POST · PUT · DELETE | `/categories` · `/brands` (+ `/{id}`) | Taxonomy admin — requires `catalog.manage` |
 | GET | `/products` | Published products; filters: `category_id`, `vendor_id`, `q`, pagination |
 | GET | `/products/{id}` | Product detail with variants |
 | POST | `/products` | Create a draft product — requires `product.create` permission |
@@ -215,7 +218,7 @@ export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
 pytest -v
 ```
 
-The suite (48 tests) covers auth (registration, login, invalid/duplicate
+The suite (51 tests) covers auth (registration, login, invalid/duplicate
 credentials, `/me`, refresh, 2FA enable + enforcement), RBAC allow/deny, the
 full cart → checkout → payment flow (commission, inventory
 reservation/deduction, vendor wallet credit, idempotency, owner-scoping), the
@@ -231,8 +234,9 @@ marketing (coupon creation permissions/duplicates, percent & fixed discounts
 at checkout, min-order and usage-limit enforcement), and notifications
 (event emission on order confirmation, mark-read/read-all, owner-scoping,
 idempotent device registration), and catalog management (variant/inventory
-edits, submit gating, admin approve/reject lifecycle, vendor-access control)
-— all green against PostgreSQL 16.
+edits, submit gating, admin approve/reject lifecycle, vendor-access control),
+and taxonomy (category/brand CRUD, slug-uniqueness, parent validation, public
+browsing, permission gating) — all green against PostgreSQL 16.
 
 ## Continuous integration
 

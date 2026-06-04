@@ -38,6 +38,35 @@ class CategoryOut(BaseModel):
     name_en: str
     slug: str
     parent_id: int | None = None
+    image_url: str | None = None
+    sort_order: int
+    is_active: bool
+
+
+class CategoryIn(BaseModel):
+    name_ar: str = Field(min_length=1, max_length=120)
+    name_en: str = Field(min_length=1, max_length=120)
+    slug: str = Field(min_length=1, max_length=140)
+    parent_id: int | None = None
+    image_url: str | None = None
+    sort_order: int = 0
+    is_active: bool = True
+
+
+class BrandOut(BaseModel):
+    model_config = ORM
+    brand_id: int
+    name_ar: str
+    name_en: str
+    slug: str
+    logo_url: str | None = None
+
+
+class BrandIn(BaseModel):
+    name_ar: str = Field(min_length=1, max_length=120)
+    name_en: str = Field(min_length=1, max_length=120)
+    slug: str = Field(min_length=1, max_length=140)
+    logo_url: str | None = None
 
 
 class VariantOut(BaseModel):
