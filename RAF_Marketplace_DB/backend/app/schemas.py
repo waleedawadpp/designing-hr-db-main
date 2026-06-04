@@ -349,3 +349,46 @@ class RatingSummary(BaseModel):
 class ReviewListResponse(BaseModel):
     summary: RatingSummary
     items: list[ReviewOut]
+
+
+# ---- wishlist -------------------------------------------------------------- #
+class WishlistItemIn(BaseModel):
+    product_id: int
+
+
+class WishlistProductOut(BaseModel):
+    model_config = ORM
+    product_id: int
+    name_ar: str
+    name_en: str
+    base_price: Decimal
+    rating_avg: Decimal
+
+
+# ---- addresses ------------------------------------------------------------- #
+class AddressIn(BaseModel):
+    label: str | None = Field(None, max_length=40)
+    recipient: str = Field(min_length=1, max_length=120)
+    phone: str = Field(min_length=1, max_length=20)
+    city_id: int | None = None
+    line1: str = Field(min_length=1, max_length=200)
+    line2: str | None = Field(None, max_length=200)
+    postal_code: str | None = Field(None, max_length=20)
+    latitude: Decimal | None = None
+    longitude: Decimal | None = None
+    is_default: bool = False
+
+
+class AddressOut(BaseModel):
+    model_config = ORM
+    address_id: int
+    label: str | None = None
+    recipient: str
+    phone: str
+    city_id: int | None = None
+    line1: str
+    line2: str | None = None
+    postal_code: str | None = None
+    latitude: Decimal | None = None
+    longitude: Decimal | None = None
+    is_default: bool

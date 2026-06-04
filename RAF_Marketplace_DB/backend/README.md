@@ -30,7 +30,9 @@ backend/
 │       ├── ai.py          # product generator, recommendations, assistant
 │       ├── shipments.py   # shipment creation + tracking timeline
 │       ├── returns.py     # returns, refunds, restock, wallet debit
-│       └── reviews.py     # product reviews + rating recalculation
+│       ├── reviews.py     # product reviews + rating recalculation
+│       ├── wishlist.py    # customer wishlist
+│       └── addresses.py   # customer address book
 │   └── services/
 │       └── ai.py          # pluggable AI provider (stub | anthropic)
 ├── alembic/               # migrations (initial applies ../schema.sql)
@@ -100,6 +102,8 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 | POST | `/products/{id}/reviews` | Leave a review (one per user; auto verified-purchase flag) |
 | GET | `/products/{id}/reviews` | Reviews + rating summary (average, count, star distribution) |
 | DELETE | `/reviews/{id}` | Delete your own review (recomputes the rating) |
+| GET · POST · DELETE | `/wishlist` · `/wishlist/items` · `/wishlist/items/{product_id}` | Wishlist (idempotent add) |
+| GET · POST · PUT · DELETE | `/addresses` ·  `/addresses/{id}` | Address book (single default enforced) |
 
 ## Reviews & ratings
 
@@ -177,9 +181,11 @@ reservation/deduction, vendor wallet credit, idempotency, owner-scoping), the
 AI layer (bilingual generation + `ai_job` persistence, recommendations, chat
 persistence + scoping), shipping/tracking (lifecycle, order roll-up, access),
 returns/refunds (eligibility caps, approval flow, refund + restock + vendor
-wallet debit, partial vs. full refund roll-up), and reviews (verified-purchase
-flag, rating recalculation, summary/distribution, one-per-user, delete) — all
-green against PostgreSQL 16.
+wallet debit, partial vs. full refund roll-up), reviews (verified-purchase
+flag, rating recalculation, summary/distribution, one-per-user, delete), and
+the customer module (wishlist idempotency/removal, address CRUD with
+single-default enforcement and owner-scoping) — all green against
+PostgreSQL 16.
 
 ## Continuous integration
 
