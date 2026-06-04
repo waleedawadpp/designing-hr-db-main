@@ -1,0 +1,51 @@
+# Local development stack for the RAF Marketplace backend.
+#   docker compose up --build
+# API:     http://localhost:8000  (docs at /docs)
+# Postgres: localhost:5432   Redis: localhost:6379
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: raf_marketplace
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d raf_marketplace"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      RAF_DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/raf_marketplace
+      RAF_REDIS_URL: redis://redis:6379/0
+      # Override these in production (e.g. a .env file next to this compose):
+      RAF_JWT_SECRET: ${RAF_JWT_SECRET:-change-me-in-production}
+      RAF_CORS_ORIGINS: ${RAF_CORS_ORIGINS:-*}
+      RAF_AI_PROVIDER: ${RAF_AI_PROVIDER:-stub}
+      RAF_ANTHROPIC_API_KEY: ${RAF_ANTHROPIC_API_KEY:-}
+      RAF_SEED_ADMIN_EMAIL: ${RAF_SEED_ADMIN_EMAIL:-}
+      RAF_SEED_ADMIN_PASSWORD: ${RAF_SEED_ADMIN_PASSWORD:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:
