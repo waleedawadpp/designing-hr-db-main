@@ -41,6 +41,8 @@ class AIProvider(Protocol):
 
     def process_image(self, *, image_url: str, operation: str) -> dict: ...
 
+    def generate_campaign(self, *, channel: str, topic: str) -> dict: ...
+
 
 class StubAIProvider:
     """Deterministic, dependency-free provider for local dev and CI."""
@@ -81,6 +83,13 @@ class StubAIProvider:
             "processed_url": f"{image_url}{sep}ai={operation}",
             "width": 1024,
             "height": 1024,
+        }
+
+    def generate_campaign(self, *, channel: str, topic: str) -> dict:
+        return {
+            "name": f"{topic} — {channel}",
+            "content_ar": f"🎉 {topic}! تسوّق الآن على سوق RAF — عروض حصرية عبر {channel}.",
+            "content_en": f"🎉 {topic}! Shop now on RAF Marketplace — exclusive {channel} deals.",
         }
 
     def assistant_reply(self, history: list[dict], suggestions: list[dict]) -> str:
@@ -144,6 +153,19 @@ class AnthropicAIProvider:
         if operation not in _IMAGE_OPERATIONS:
             raise ValueError(f"Unsupported operation: {operation}")
         return {"operation": operation, "processed_url": image_url}
+
+    def generate_campaign(self, *, channel, topic) -> dict:  # pragma: no cover
+        import json
+
+        prompt = (
+            "Write a short bilingual marketing campaign as STRICT JSON with keys "
+            f"name, content_ar, content_en for channel={channel!r} topic={topic!r}."
+        )
+        msg = self._client.messages.create(
+            model=self.model, max_tokens=512,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return json.loads(msg.content[0].text)
 
 
 def get_ai_provider() -> AIProvider:

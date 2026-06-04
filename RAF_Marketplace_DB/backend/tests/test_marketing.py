@@ -116,3 +116,32 @@ def test_coupon_creation_permissions_and_duplicates(client, db):
     assert client.post("/coupons", headers=admin, json={
         "code": "TOOBIG", "discount_type": "percent", "discount_value": "150",
     }).status_code == 422
+
+
+def test_ai_campaign_generation_and_crud(client, db):
+    admin = _admin(client, db, "mk-camp-admin@example.com")
+
+    # AI-generated campaign.
+    r = client.post("/campaigns/generate", headers=admin, json={
+        "channel": "social", "topic": "Eid Sale"})
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["is_ai_generated"] is True
+    assert body["content_ar"] and body["content_en"]
+    cid = body["campaign_id"]
+
+    # Manual campaign + unknown channel rejected.
+    assert client.post("/campaigns", headers=admin, json={
+        "name": "Manual", "channel": "email", "content_en": "Hi"}).status_code == 201
+    assert client.post("/campaigns/generate", headers=admin, json={
+        "channel": "pigeon", "topic": "x"}).status_code == 422
+
+    # Listing + delete.
+    assert len(client.get("/campaigns", headers=admin).json()) >= 2
+    assert client.delete(f"/campaigns/{cid}", headers=admin).status_code == 204
+
+
+def test_campaign_requires_permission(client):
+    plain = _auth(client, "mk-camp-plain@example.com")
+    assert client.post("/campaigns/generate", headers=plain, json={
+        "channel": "social", "topic": "x"}).status_code == 403

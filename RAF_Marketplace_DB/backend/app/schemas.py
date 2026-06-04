@@ -527,6 +527,32 @@ class CouponOut(BaseModel):
     is_active: bool
 
 
+class CampaignGenIn(BaseModel):
+    channel: str = Field(description="social | email | sms | ads")
+    topic: str = Field(min_length=1, max_length=150)
+    vendor_id: int | None = None
+
+
+class CampaignCreateIn(BaseModel):
+    name: str = Field(min_length=1, max_length=150)
+    channel: str = Field(description="social | email | sms | ads")
+    content_ar: str | None = None
+    content_en: str | None = None
+    vendor_id: int | None = None
+
+
+class CampaignOut(BaseModel):
+    model_config = ORM
+    campaign_id: int
+    vendor_id: int | None = None
+    name: str
+    channel: str
+    content_ar: str | None = None
+    content_en: str | None = None
+    is_ai_generated: bool
+    created_at: dt.datetime
+
+
 # ---- reports (view-backed) ------------------------------------------------- #
 class VendorRevenueReport(BaseModel):
     vendor_id: int

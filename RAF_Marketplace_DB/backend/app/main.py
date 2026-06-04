@@ -7,9 +7,9 @@ from fastapi import FastAPI
 from app.config import settings
 from app.middleware import ActivityLogMiddleware
 from app.routers import (
-    addresses, ai, audit, auth, cart, coupons, health, moderation, notifications,
-    orders, payouts, products, reports, returns, reviews, shipments, taxonomy,
-    vendors, wishlist,
+    addresses, ai, audit, auth, campaigns, cart, coupons, health, moderation,
+    notifications, orders, payouts, products, reports, returns, reviews,
+    shipments, taxonomy, vendors, wishlist,
 )
 
 app = FastAPI(title=settings.api_title, version=settings.api_version)
@@ -34,6 +34,7 @@ app.include_router(moderation.router)
 app.include_router(taxonomy.router)
 app.include_router(payouts.router)
 app.include_router(audit.router)
+app.include_router(campaigns.router)
 
 
 @app.get("/", tags=["system"])

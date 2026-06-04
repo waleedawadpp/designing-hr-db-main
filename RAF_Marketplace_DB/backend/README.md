@@ -131,6 +131,8 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 | GET | `/vendors/{id}/reports/low-stock` | Variants at/under their restock threshold |
 | GET | `/reports/platform/monthly-revenue` | Platform revenue by month — requires `reports.platform` |
 | POST · GET | `/coupons` | Create/list discount codes — create requires `marketing.manage` |
+| POST | `/campaigns/generate` | AI-generate a bilingual campaign — requires `marketing.manage` |
+| POST · GET · DELETE | `/campaigns` (+ `/{id}`) | Manage marketing campaigns |
 | GET | `/notifications` · `/notifications/unread-count` | Notification inbox |
 | POST | `/notifications/{id}/read` · `/notifications/read-all` | Mark read |
 | POST · DELETE | `/devices` · `/devices/{token}` | Register/unregister a push device |
@@ -229,7 +231,7 @@ export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
 pytest -v
 ```
 
-The suite (66 tests) covers auth (registration, login, invalid/duplicate
+The suite (68 tests) covers auth (registration, login, invalid/duplicate
 credentials, `/me`, refresh, 2FA enable + enforcement), RBAC allow/deny, the
 full cart → checkout → payment flow (commission, inventory
 reservation/deduction, vendor wallet credit, idempotency, owner-scoping), the
@@ -254,7 +256,9 @@ granting the owner store-management access, reject), and payouts (request
 holding funds, over-balance rejection, approve, reject refunding the wallet,
 access control), AI image processing + demand forecasting (job persistence,
 invalid-op handling, vendor-scoped access), and audit logging (mutating
-requests recorded, admin-only viewer) — all green against PostgreSQL 16.
+requests recorded, admin-only viewer), and marketing campaigns (AI-generated
+bilingual copy, manual create, channel validation, permission gating) — all
+green against PostgreSQL 16.
 
 ## Continuous integration
 
