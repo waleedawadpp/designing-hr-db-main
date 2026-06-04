@@ -19,6 +19,7 @@ from app.db import get_db
 from app.deps import get_current_user
 from app.schemas import CheckoutIn, OrderOut, OrderWithPayment, PaymentOut
 from app.services.coupons import apply_coupon
+from app.services.notifications import notify
 from orm import (
     AppUser, Cart, CartItem, CustomerOrder, Inventory, OrderItem, OrderStatus,
     Payment, PaymentGateway, PaymentStatus, Product, ProductVariant, Vendor,
@@ -151,6 +152,13 @@ def confirm_payment(
     payment.status = PaymentStatus.paid
     payment.paid_at = dt.datetime.now(dt.timezone.utc)
     order.status = OrderStatus.confirmed
+    notify(
+        db, order.user_id,
+        title_ar="تم تأكيد طلبك", title_en="Your order is confirmed",
+        body_ar=f"تم تأكيد الطلب {order.order_number}.",
+        body_en=f"Order {order.order_number} has been confirmed.",
+        payload={"order_id": order.order_id},
+    )
 
     for item in order.items:
         inv = db.get(Inventory, item.variant_id)

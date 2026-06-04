@@ -19,6 +19,7 @@ from app.deps import get_current_user, require_permission
 from app.schemas import (
     ShipmentCreateIn, ShipmentDetail, ShipmentEventIn, ShipmentEventOut, ShipmentOut,
 )
+from app.services.notifications import notify
 from orm import (
     AppUser, CarrierCode, CustomerOrder, OrderItem, OrderStatus, Shipment,
     ShipmentEvent, ShipmentStatus,
@@ -107,7 +108,16 @@ def add_tracking_event(
     if status == ShipmentStatus.delivered:
         shipment.delivered_at = now
 
-    _roll_up_order_status(db, _order_or_404(db, shipment.order_id))
+    order = _order_or_404(db, shipment.order_id)
+    _roll_up_order_status(db, order)
+    if status == ShipmentStatus.delivered:
+        notify(
+            db, order.user_id,
+            title_ar="تم تسليم شحنتك", title_en="Your shipment was delivered",
+            body_ar=f"تم تسليم شحنة الطلب {order.order_number}.",
+            body_en=f"Shipment for order {order.order_number} was delivered.",
+            payload={"order_id": order.order_id, "shipment_id": shipment.shipment_id},
+        )
     db.commit()
 
     shipment = db.scalar(

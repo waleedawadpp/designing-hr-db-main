@@ -445,3 +445,32 @@ class MonthlyRevenueRow(BaseModel):
     orders_count: int
     gross_revenue: Decimal
     platform_commission: Decimal
+
+
+# ---- notifications & devices ----------------------------------------------- #
+class NotificationOut(BaseModel):
+    model_config = ORM
+    notification_id: int
+    channel: str
+    title_ar: str | None = None
+    title_en: str | None = None
+    body_ar: str | None = None
+    body_en: str | None = None
+    is_read: bool
+    sent_at: dt.datetime
+
+
+class UnreadCount(BaseModel):
+    unread: int
+
+
+class DeviceTokenIn(BaseModel):
+    token: str = Field(min_length=1)
+    platform: str = Field(description="android | ios | web")
+
+
+class DeviceTokenOut(BaseModel):
+    model_config = ORM
+    token_id: int
+    token: str
+    platform: str

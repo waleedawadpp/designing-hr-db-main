@@ -34,10 +34,12 @@ backend/
 │       ├── wishlist.py    # customer wishlist
 │       ├── addresses.py   # customer address book
 │       ├── reports.py     # vendor/platform reporting (view-backed)
-│       └── coupons.py     # marketing: discount codes
+│       ├── coupons.py     # marketing: discount codes
+│       └── notifications.py  # notification inbox + push devices
 │   └── services/
 │       ├── ai.py          # pluggable AI provider (stub | anthropic)
-│       └── coupons.py     # coupon validation + discount calculation
+│       ├── coupons.py     # coupon validation + discount calculation
+│       └── notifications.py  # emit notifications on key events
 ├── alembic/               # migrations (initial applies ../schema.sql)
 ├── tests/                 # pytest suite (auth, RBAC, orders, AI, shipping, returns, reviews)
 ├── alembic.ini
@@ -111,6 +113,16 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 | GET | `/vendors/{id}/reports/low-stock` | Variants at/under their restock threshold |
 | GET | `/reports/platform/monthly-revenue` | Platform revenue by month — requires `reports.platform` |
 | POST · GET | `/coupons` | Create/list discount codes — create requires `marketing.manage` |
+| GET | `/notifications` · `/notifications/unread-count` | Notification inbox |
+| POST | `/notifications/{id}/read` · `/notifications/read-all` | Mark read |
+| POST · DELETE | `/devices` · `/devices/{token}` | Register/unregister a push device |
+
+## Notifications
+
+A bilingual notification inbox (`in_app` by default; `push`/`email`/`sms`
+channels available). Notifications are emitted automatically when an order is
+confirmed (payment) and when a shipment is delivered. Mobile clients register
+push tokens via `/devices` (one row per unique token).
 
 ## Marketing & coupons
 
@@ -196,7 +208,7 @@ export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
 pytest -v
 ```
 
-The suite (40 tests) covers auth (registration, login, invalid/duplicate
+The suite (44 tests) covers auth (registration, login, invalid/duplicate
 credentials, `/me`, refresh, 2FA enable + enforcement), RBAC allow/deny, the
 full cart → checkout → payment flow (commission, inventory
 reservation/deduction, vendor wallet credit, idempotency, owner-scoping), the
@@ -209,8 +221,9 @@ the customer module (wishlist idempotency/removal, address CRUD with
 single-default enforcement and owner-scoping), reporting (view-backed vendor
 revenue, low-stock, platform monthly revenue with access control), and
 marketing (coupon creation permissions/duplicates, percent & fixed discounts
-at checkout, min-order and usage-limit enforcement) — all green against
-PostgreSQL 16.
+at checkout, min-order and usage-limit enforcement), and notifications
+(event emission on order confirmation, mark-read/read-all, owner-scoping,
+idempotent device registration) — all green against PostgreSQL 16.
 
 ## Continuous integration
 
