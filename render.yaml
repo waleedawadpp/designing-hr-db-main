@@ -14,7 +14,7 @@ services:
     dockerfilePath: RAF_Marketplace_DB/backend/Dockerfile
     dockerContext: RAF_Marketplace_DB
     healthCheckPath: /health
-    plan: starter
+    plan: free                          # upgrade to "starter" for production (no sleep)
     region: frankfurt
     envVars:
       - key: RAF_DATABASE_URL
@@ -35,5 +35,6 @@ services:
 databases:
   - name: raf-marketplace-db
     databaseName: raf_marketplace
-    plan: basic-256mb
+    plan: free                          # free Postgres expires ~30 days; upgrade for production
     region: frankfurt
+
