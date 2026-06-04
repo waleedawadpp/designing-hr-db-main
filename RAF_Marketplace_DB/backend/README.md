@@ -85,7 +85,7 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 | POST | `/auth/2fa/enable` · `/auth/2fa/disable` | Turn 2FA on/off (verifies a code) |
 | GET | `/categories` · `/brands` | Public taxonomy browsing |
 | POST · PUT · DELETE | `/categories` · `/brands` (+ `/{id}`) | Taxonomy admin — requires `catalog.manage` |
-| GET | `/products` | Published products; filters: `category_id`, `vendor_id`, `q`, pagination |
+| GET | `/products` | Published products; filters: `category_id`, `vendor_id`, `brand_id`, `q`, `min_price`/`max_price`, `in_stock`, `sort` (newest/price_asc/price_desc/rating), pagination |
 | GET | `/products/{id}` | Product detail with variants |
 | POST | `/products` | Create a draft product — requires `product.create` permission |
 | POST | `/products/{id}/variants` | Add a SKU + stock (vendor owner/staff) |
@@ -218,7 +218,7 @@ export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
 pytest -v
 ```
 
-The suite (51 tests) covers auth (registration, login, invalid/duplicate
+The suite (55 tests) covers auth (registration, login, invalid/duplicate
 credentials, `/me`, refresh, 2FA enable + enforcement), RBAC allow/deny, the
 full cart → checkout → payment flow (commission, inventory
 reservation/deduction, vendor wallet credit, idempotency, owner-scoping), the
@@ -236,7 +236,9 @@ at checkout, min-order and usage-limit enforcement), and notifications
 idempotent device registration), and catalog management (variant/inventory
 edits, submit gating, admin approve/reject lifecycle, vendor-access control),
 and taxonomy (category/brand CRUD, slug-uniqueness, parent validation, public
-browsing, permission gating) — all green against PostgreSQL 16.
+browsing, permission gating), and advanced search (brand filter, price range,
+in-stock filter, price/rating sorting, invalid-sort rejection) — all green
+against PostgreSQL 16.
 
 ## Continuous integration
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
@@ -19,16 +21,29 @@ from orm import AppUser, Inventory, Product, ProductStatus, ProductVariant
 router = APIRouter(prefix="/products", tags=["products"])
 
 
+_SORTS = {
+    "newest": Product.created_at.desc(),
+    "price_asc": Product.base_price.asc(),
+    "price_desc": Product.base_price.desc(),
+    "rating": Product.rating_avg.desc(),
+}
+
+
 @router.get("", response_model=ProductListResponse)
 def list_products(
     db: Session = Depends(get_db),
     category_id: int | None = None,
     vendor_id: int | None = None,
+    brand_id: int | None = None,
     q: str | None = Query(None, description="Search term (Arabic or English)"),
+    min_price: Decimal | None = Query(None, ge=0),
+    max_price: Decimal | None = Query(None, ge=0),
+    in_stock: bool = Query(False, description="Only products with available stock"),
+    sort: str = Query("newest", pattern="^(newest|price_asc|price_desc|rating)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(settings.default_page_size, ge=1, le=settings.max_page_size),
 ):
-    """Published product listing with optional category/vendor filters & search."""
+    """Published product listing with filtering, search, sorting and pagination."""
     stmt = select(Product).where(
         Product.status == ProductStatus.published,
         Product.deleted_at.is_(None),
@@ -37,13 +52,30 @@ def list_products(
         stmt = stmt.where(Product.category_id == category_id)
     if vendor_id is not None:
         stmt = stmt.where(Product.vendor_id == vendor_id)
+    if brand_id is not None:
+        stmt = stmt.where(Product.brand_id == brand_id)
+    if min_price is not None:
+        stmt = stmt.where(Product.base_price >= min_price)
+    if max_price is not None:
+        stmt = stmt.where(Product.base_price <= max_price)
     if q:
         like = f"%{q}%"
         stmt = stmt.where(or_(Product.name_ar.ilike(like), Product.name_en.ilike(like)))
+    if in_stock:
+        available = (
+            select(ProductVariant.variant_id)
+            .join(Inventory, Inventory.variant_id == ProductVariant.variant_id)
+            .where(
+                ProductVariant.product_id == Product.product_id,
+                Inventory.quantity - Inventory.reserved > 0,
+            )
+            .exists()
+        )
+        stmt = stmt.where(available)
 
     total = db.scalar(select(func.count()).select_from(stmt.subquery()))
     rows = db.scalars(
-        stmt.order_by(Product.created_at.desc())
+        stmt.order_by(_SORTS[sort])
         .limit(page_size)
         .offset((page - 1) * page_size)
     ).all()
