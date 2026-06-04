@@ -13,10 +13,11 @@ from app.db import get_db
 from app.deps import get_current_user, require_permission
 from app.schemas import (
     InventoryOut, InventoryUpdateIn, ProductCreate, ProductDetail,
-    ProductListResponse, ProductOut, VariantCreateIn, VariantOut, VariantUpdateIn,
+    ProductImageIn, ProductImageOut, ProductListResponse, ProductOut,
+    VariantCreateIn, VariantOut, VariantUpdateIn,
 )
 from app.services.access import assert_vendor_access
-from orm import AppUser, Inventory, Product, ProductStatus, ProductVariant
+from orm import AppUser, Inventory, Product, ProductImage, ProductStatus, ProductVariant
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -90,7 +91,7 @@ def list_products(
 def get_product(product_id: int, db: Session = Depends(get_db)):
     product = db.scalar(
         select(Product)
-        .options(selectinload(Product.variants))
+        .options(selectinload(Product.variants), selectinload(Product.images))
         .where(Product.product_id == product_id, Product.deleted_at.is_(None))
     )
     if product is None:
@@ -203,3 +204,46 @@ def submit_for_review(
     db.commit()
     db.refresh(product)
     return product
+
+
+@router.get("/{product_id}/images", response_model=list[ProductImageOut])
+def list_product_images(product_id: int, db: Session = Depends(get_db)):
+    if db.get(Product, product_id) is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return db.scalars(
+        select(ProductImage).where(ProductImage.product_id == product_id)
+        .order_by(ProductImage.sort_order)
+    ).all()
+
+
+@router.post("/{product_id}/images", response_model=ProductImageOut, status_code=201)
+def add_product_image(
+    product_id: int,
+    payload: ProductImageIn,
+    user: AppUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _product_for_vendor_edit(db, product_id, user)
+    if payload.variant_id is not None:
+        variant = db.get(ProductVariant, payload.variant_id)
+        if variant is None or variant.product_id != product_id:
+            raise HTTPException(status_code=400, detail="Variant does not belong to this product")
+    image = ProductImage(product_id=product_id, **payload.model_dump())
+    db.add(image)
+    db.commit()
+    db.refresh(image)
+    return image
+
+
+@router.delete("/images/{image_id}", status_code=204)
+def delete_product_image(
+    image_id: int,
+    user: AppUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    image = db.get(ProductImage, image_id)
+    if image is None:
+        raise HTTPException(status_code=404, detail="Image not found")
+    _product_for_vendor_edit(db, image.product_id, user)
+    db.delete(image)
+    db.commit()

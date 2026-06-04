@@ -91,6 +91,8 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 | POST | `/products/{id}/variants` | Add a SKU + stock (vendor owner/staff) |
 | PUT | `/products/variants/{id}` · `/products/variants/{id}/inventory` | Update price/active, set stock |
 | POST | `/products/{id}/submit` | Submit a draft for moderation (needs ≥1 variant) |
+| GET · POST | `/products/{id}/images` | List (public) / add a product image (vendor) |
+| DELETE | `/products/images/{id}` | Remove a product image (vendor) |
 | GET | `/admin/products` | Moderation queue — requires `product.moderate` |
 | POST | `/products/{id}/approve` · `/products/{id}/reject` | Moderate — requires `product.moderate` |
 | GET | `/vendors` | List vendors (approved by default) |
@@ -231,7 +233,7 @@ export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
 pytest -v
 ```
 
-The suite (68 tests) covers auth (registration, login, invalid/duplicate
+The suite (69 tests) covers auth (registration, login, invalid/duplicate
 credentials, `/me`, refresh, 2FA enable + enforcement), RBAC allow/deny, the
 full cart → checkout → payment flow (commission, inventory
 reservation/deduction, vendor wallet credit, idempotency, owner-scoping), the

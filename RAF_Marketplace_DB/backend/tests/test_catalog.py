@@ -109,3 +109,26 @@ def test_catalog_access_control(client, db):
 
     # A vendor without moderation rights cannot approve.
     assert client.post(f"/products/{pid}/approve", headers=vendor).status_code == 403
+
+
+def test_product_images_crud(client, db):
+    vendor = _vendor_user(client, db, "img-vendor@example.com")
+    pid = _new_product(client, vendor, "img-product")["product_id"]
+
+    r = client.post(f"/products/{pid}/images", headers=vendor,
+                    json={"url": "https://cdn/x.jpg", "alt_text": "front", "sort_order": 1})
+    assert r.status_code == 201, r.text
+    img_id = r.json()["image_id"]
+
+    # Public listing + product detail include the image.
+    assert any(i["image_id"] == img_id for i in client.get(f"/products/{pid}/images").json())
+    detail = client.get(f"/products/{pid}").json()
+    assert any(i["image_id"] == img_id for i in detail["images"])
+
+    # Outsiders cannot add or delete.
+    outsider = _auth(client, "img-outsider@example.com")
+    assert client.post(f"/products/{pid}/images", headers=outsider,
+                       json={"url": "y"}).status_code in (403, 404)
+
+    assert client.delete(f"/products/images/{img_id}", headers=vendor).status_code == 204
+    assert client.get(f"/products/{pid}/images").json() == []

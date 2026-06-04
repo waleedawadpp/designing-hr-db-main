@@ -426,6 +426,8 @@ class Product(Base):
 
     vendor: Mapped["Vendor"] = relationship(back_populates="products")
     variants: Mapped[list["ProductVariant"]] = relationship(back_populates="product")
+    images: Mapped[list["ProductImage"]] = relationship(
+        "ProductImage", order_by="ProductImage.sort_order")
 
 
 class Attribute(Base):

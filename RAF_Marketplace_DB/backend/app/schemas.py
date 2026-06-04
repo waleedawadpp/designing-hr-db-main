@@ -104,6 +104,24 @@ class VariantOut(BaseModel):
     is_active: bool
 
 
+class ProductImageIn(BaseModel):
+    url: str = Field(min_length=1)
+    alt_text: str | None = Field(None, max_length=200)
+    variant_id: int | None = None
+    sort_order: int = 0
+
+
+class ProductImageOut(BaseModel):
+    model_config = ORM
+    image_id: int
+    product_id: int
+    variant_id: int | None = None
+    url: str
+    alt_text: str | None = None
+    sort_order: int
+    is_ai_processed: bool
+
+
 class ProductOut(BaseModel):
     model_config = ORM
     product_id: int
@@ -124,6 +142,7 @@ class ProductDetail(ProductOut):
     description_ar: str | None = None
     description_en: str | None = None
     variants: list[VariantOut] = Field(default_factory=list)
+    images: list[ProductImageOut] = Field(default_factory=list)
 
 
 class ProductCreate(BaseModel):
