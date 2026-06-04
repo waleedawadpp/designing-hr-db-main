@@ -30,6 +30,14 @@ class VendorOut(BaseModel):
     logo_url: str | None = None
 
 
+class VendorApplyIn(BaseModel):
+    store_name_ar: str = Field(min_length=1, max_length=150)
+    store_name_en: str = Field(min_length=1, max_length=150)
+    slug: str = Field(min_length=1, max_length=160)
+    description_ar: str | None = None
+    description_en: str | None = None
+
+
 # ---- catalog --------------------------------------------------------------- #
 class CategoryOut(BaseModel):
     model_config = ORM
