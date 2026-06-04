@@ -319,3 +319,33 @@ class RefundOut(BaseModel):
 
 class ReturnResolved(ReturnOut):
     refund: RefundOut | None = None
+
+
+# ---- reviews & ratings ----------------------------------------------------- #
+class ReviewCreateIn(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    title: str | None = Field(None, max_length=150)
+    body: str | None = None
+
+
+class ReviewOut(BaseModel):
+    model_config = ORM
+    review_id: int
+    product_id: int
+    user_id: int
+    rating: int
+    title: str | None = None
+    body: str | None = None
+    is_verified_purchase: bool
+    created_at: dt.datetime
+
+
+class RatingSummary(BaseModel):
+    average: Decimal
+    count: int
+    distribution: dict[int, int]  # stars (1-5) -> count
+
+
+class ReviewListResponse(BaseModel):
+    summary: RatingSummary
+    items: list[ReviewOut]

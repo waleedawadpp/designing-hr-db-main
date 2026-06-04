@@ -29,11 +29,12 @@ backend/
 │       ├── orders.py      # checkout, payment confirm, order retrieval
 │       ├── ai.py          # product generator, recommendations, assistant
 │       ├── shipments.py   # shipment creation + tracking timeline
-│       └── returns.py     # returns, refunds, restock, wallet debit
+│       ├── returns.py     # returns, refunds, restock, wallet debit
+│       └── reviews.py     # product reviews + rating recalculation
 │   └── services/
 │       └── ai.py          # pluggable AI provider (stub | anthropic)
 ├── alembic/               # migrations (initial applies ../schema.sql)
-├── tests/                 # pytest suite (auth, RBAC, orders, AI, shipping, returns)
+├── tests/                 # pytest suite (auth, RBAC, orders, AI, shipping, returns, reviews)
 ├── alembic.ini
 ├── Dockerfile
 └── requirements.txt
@@ -96,6 +97,17 @@ uvicorn app.main:app --reload        # http://localhost:8000/docs
 | GET | `/returns` | List the buyer's returns |
 | POST | `/returns/{id}/approve` · `/reject` | Resolve a return — requires `order.manage` |
 | POST | `/returns/{id}/complete` | Issue refund + restock + debit vendor — requires `order.manage` |
+| POST | `/products/{id}/reviews` | Leave a review (one per user; auto verified-purchase flag) |
+| GET | `/products/{id}/reviews` | Reviews + rating summary (average, count, star distribution) |
+| DELETE | `/reviews/{id}` | Delete your own review (recomputes the rating) |
+
+## Reviews & ratings
+
+Any authenticated user can leave **one review per product**; it is flagged
+`is_verified_purchase` automatically when the user has a paid order containing
+the product. Writing or deleting a review recomputes the product's cached
+`rating_avg` / `rating_count`, and the list endpoint returns a summary with the
+average and a 1–5 star distribution.
 
 ## Returns & refunds
 
@@ -158,15 +170,16 @@ export RAF_DATABASE_URL=postgresql+psycopg2://postgres@localhost:5432/raf_test
 pytest -v
 ```
 
-The suite (24 tests) covers auth (registration, login, invalid/duplicate
+The suite (28 tests) covers auth (registration, login, invalid/duplicate
 credentials, `/me`, refresh, 2FA enable + enforcement), RBAC allow/deny, the
 full cart → checkout → payment flow (commission, inventory
 reservation/deduction, vendor wallet credit, idempotency, owner-scoping), the
 AI layer (bilingual generation + `ai_job` persistence, recommendations, chat
 persistence + scoping), shipping/tracking (lifecycle, order roll-up, access),
-and returns/refunds (eligibility caps, approval flow, refund + restock +
-vendor wallet debit, partial vs. full refund roll-up) — all green against
-PostgreSQL 16.
+returns/refunds (eligibility caps, approval flow, refund + restock + vendor
+wallet debit, partial vs. full refund roll-up), and reviews (verified-purchase
+flag, rating recalculation, summary/distribution, one-per-user, delete) — all
+green against PostgreSQL 16.
 
 ## Continuous integration
 
