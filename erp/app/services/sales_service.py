@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import date as date_type
 from ..extensions import db
 
@@ -34,11 +34,12 @@ def calculate_invoice_totals(items: list, invoice_discount: float = 0) -> dict:
     inv_disc = Decimal(str(invoice_discount))
     grand_total = subtotal - total_discount - inv_disc + vat_total
 
+    _q = Decimal('0.001')
     return {
-        'subtotal': float(subtotal),
-        'discount_total': float(total_discount + inv_disc),
-        'vat_total': float(vat_total),
-        'grand_total': float(grand_total),
+        'subtotal': float(subtotal.quantize(_q, ROUND_HALF_UP)),
+        'discount_total': float((total_discount + inv_disc).quantize(_q, ROUND_HALF_UP)),
+        'vat_total': float(vat_total.quantize(_q, ROUND_HALF_UP)),
+        'grand_total': float(grand_total.quantize(_q, ROUND_HALF_UP)),
     }
 
 
@@ -59,6 +60,7 @@ def recalculate_invoice(invoice):
     invoice.grand_total = totals['grand_total']
 
     # Update each line's stored amounts
+    _q = Decimal('0.001')
     for item in invoice.items:
         qty = Decimal(str(float(item.qty)))
         price = Decimal(str(float(item.unit_price)))
@@ -68,9 +70,9 @@ def recalculate_invoice(invoice):
         line_disc = line_base * disc_pct / 100
         line_after_disc = line_base - line_disc
         line_vat = line_after_disc * vat_rate / 100
-        item.discount_amt = float(line_disc)
-        item.vat_amount = float(line_vat)
-        item.line_total = float(line_after_disc + line_vat)
+        item.discount_amt = float(line_disc.quantize(_q, ROUND_HALF_UP))
+        item.vat_amount = float(line_vat.quantize(_q, ROUND_HALF_UP))
+        item.line_total = float((line_after_disc + line_vat).quantize(_q, ROUND_HALF_UP))
 
 
 def assign_invoice_no(invoice):
@@ -118,12 +120,15 @@ def confirm_invoice(invoice_id: int, allow_negative_stock: bool = False):
         item.batch_id = batch.id
 
     # Generate journal entry
+    import logging
     try:
         journal = create_sales_journal_entry(invoice)
-        invoice.journal_id = journal.id
+        if journal is not None:
+            invoice.journal_id = journal.id
     except Exception:
-        # Accounting not yet wired — skip journal silently in early phases
-        pass
+        logging.getLogger(__name__).exception(
+            'Failed to create journal entry for invoice %s', invoice.id
+        )
 
     invoice.status = InvoiceStatus.CONFIRMED
     db.session.commit()
