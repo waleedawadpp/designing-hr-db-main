@@ -1,13 +1,13 @@
-import json
 from datetime import date, timedelta
 
 from flask import render_template
 from flask_login import login_required
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 
 from . import dashboard_bp
 from ...extensions import db
-from ...models.sales import SalesInvoice, InvoiceItem, InvoiceStatus, InvoiceType
+from ...models.sales import SalesInvoice, InvoiceItem, InvoiceStatus, InvoiceType, Customer
 from ...models.inventory import Product, ProductBatch
 
 
@@ -90,15 +90,16 @@ def index():
             y -= 1
         months.append((y, m))
 
-    # Query grouped monthly totals for confirmed invoices
+    # Query grouped monthly totals for confirmed invoices (last 12 months only)
+    cutoff = date(months[0][0], months[0][1], 1)
+    yr_col = func.extract('year', SalesInvoice.date).label('yr')
+    mo_col = func.extract('month', SalesInvoice.date).label('mo')
     monthly_rows = (
-        db.session.query(
-            func.extract('year', SalesInvoice.date).label('yr'),
-            func.extract('month', SalesInvoice.date).label('mo'),
-            func.coalesce(func.sum(SalesInvoice.grand_total), 0).label('total'),
-        )
-        .filter(SalesInvoice.status == InvoiceStatus.CONFIRMED)
-        .group_by('yr', 'mo')
+        db.session.query(yr_col, mo_col,
+                         func.coalesce(func.sum(SalesInvoice.grand_total), 0).label('total'))
+        .filter(SalesInvoice.status == InvoiceStatus.CONFIRMED,
+                SalesInvoice.date >= cutoff)
+        .group_by(yr_col, mo_col)
         .all()
     )
     monthly_map = {(int(r.yr), int(r.mo)): float(r.total) for r in monthly_rows}
@@ -126,9 +127,10 @@ def index():
         .all()
     )
 
-    # --- Recent 10 Confirmed Invoices ---
+    # --- Recent 10 Confirmed Invoices (eager-load customer to avoid N+1) ---
     recent_invoices = (
         SalesInvoice.query
+        .options(joinedload(SalesInvoice.customer))
         .filter(SalesInvoice.status == InvoiceStatus.CONFIRMED)
         .order_by(SalesInvoice.date.desc(), SalesInvoice.id.desc())
         .limit(10)
@@ -141,8 +143,8 @@ def index():
         month_sales=month_sales,
         total_receivables=total_receivables,
         low_stock_count=low_stock_count,
-        chart_labels=json.dumps(chart_labels, ensure_ascii=False),
-        chart_data=json.dumps(chart_data),
+        chart_labels=chart_labels,
+        chart_data=chart_data,
         top_products=top_products,
         recent_invoices=recent_invoices,
     )

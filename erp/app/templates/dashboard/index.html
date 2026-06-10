@@ -189,8 +189,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 (function () {
-  var labels = {{ chart_labels|safe }};
-  var data   = {{ chart_data|safe }};
+  var labels = {{ chart_labels|tojson }};
+  var data   = {{ chart_data|tojson }};
 
   new Chart(document.getElementById('salesChart'), {
     type: 'bar',
