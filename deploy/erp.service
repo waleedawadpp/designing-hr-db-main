@@ -1,0 +1,26 @@
+[Unit]
+Description=ERP Flask Application
+After=network.target
+
+[Service]
+User=erp
+Group=www-data
+WorkingDirectory=/home/erp/app
+Environment="FLASK_ENV=production"
+Environment="SECRET_KEY=change-this-secret-key-in-production"
+Environment="DATABASE_URL=postgresql://erp:password@localhost/erp_db"
+ExecStart=/home/erp/venv/bin/gunicorn \
+    --workers 4 \
+    --worker-class sync \
+    --timeout 120 \
+    --bind unix:/run/erp/gunicorn.sock \
+    --access-logfile /var/log/erp/access.log \
+    --error-logfile /var/log/erp/error.log \
+    "erp.app:create_app('production')"
+RuntimeDirectory=erp
+RuntimeDirectoryMode=0755
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
