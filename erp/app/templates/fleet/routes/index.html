@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}المسارات{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3">
+  <h4>مسارات التوزيع</h4>
+  <a href="{{ url_for('fleet.new_route') }}" class="btn btn-primary">+ مسار جديد</a>
+</div>
+<table class="table table-bordered table-hover">
+  <thead class="table-light"><tr><th>#</th><th>الاسم</th><th>الفرع</th><th>المحطات</th></tr></thead>
+  <tbody>
+  {% for r in routes %}
+  <tr>
+    <td>{{ r.id }}</td><td>{{ r.name }}</td>
+    <td>{{ r.branch.name if r.branch else '—' }}</td>
+    <td>{{ r.get_stops()|join(', ') or '—' }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

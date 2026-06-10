@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}أوامر التحميل{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3">
+  <h4>أوامر التحميل</h4>
+  <a href="{{ url_for('fleet.new_load_order') }}" class="btn btn-primary">+ أمر تحميل جديد</a>
+</div>
+<table class="table table-bordered table-hover">
+  <thead class="table-light">
+    <tr><th>المرجع</th><th>التاريخ</th><th>المركبة</th><th>السائق</th><th>الفواتير</th><th>الحالة</th><th></th></tr>
+  </thead>
+  <tbody>
+  {% for lo in orders %}
+  <tr>
+    <td>{{ lo.ref_no or lo.id }}</td><td>{{ lo.date }}</td>
+    <td>{{ lo.vehicle.plate_no if lo.vehicle else '—' }}</td>
+    <td>{{ lo.driver.full_name if lo.driver else '—' }}</td>
+    <td>{{ lo.items.count() }}</td>
+    <td><span class="badge {{ 'bg-secondary' if lo.status == 'PENDING' else 'bg-primary' if lo.status == 'IN_TRANSIT' else 'bg-success' }}">{{ lo.status_label() }}</span></td>
+    <td><a href="{{ url_for('fleet.load_order_detail', id=lo.id) }}" class="btn btn-sm btn-outline-primary">عرض</a></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

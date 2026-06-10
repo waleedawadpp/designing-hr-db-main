@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}أمر تحميل #{{ lo.id }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3">
+  <h4>أمر التحميل {{ lo.ref_no or '#' + lo.id|string }}</h4>
+  {% if lo.status == 'PENDING' %}
+  <form method="POST" action="{{ url_for('fleet.dispatch_load_order', id=lo.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-primary">→ إرسال المركبة</button>
+  </form>
+  {% else %}
+  <span class="badge bg-primary fs-6">{{ lo.status_label() }}</span>
+  {% endif %}
+</div>
+<dl class="row">
+  <dt class="col-3">المركبة</dt><dd class="col-9">{{ lo.vehicle.plate_no if lo.vehicle else '—' }}</dd>
+  <dt class="col-3">السائق</dt><dd class="col-9">{{ lo.driver.full_name if lo.driver else '—' }}</dd>
+  <dt class="col-3">التاريخ</dt><dd class="col-9">{{ lo.date }}</dd>
+</dl>
+<h6>التسليمات</h6>
+<table class="table table-bordered">
+  <thead><tr><th>رقم الفاتورة</th><th>العميل</th><th>الإجمالي</th><th>الحالة</th><th>المحصّل</th><th></th></tr></thead>
+  <tbody>
+  {% for d in deliveries %}
+  <tr>
+    <td>{{ d.invoice.invoice_no if d.invoice else '—' }}</td>
+    <td>{{ d.invoice.customer.name if d.invoice and d.invoice.customer else '—' }}</td>
+    <td>{{ d.invoice.grand_total if d.invoice else '—' }}</td>
+    <td>
+      {% if d.status == 'DELIVERED' %}<span class="badge bg-success">تم التسليم</span>
+      {% elif d.status == 'RETURNED' %}<span class="badge bg-danger">مُعاد</span>
+      {% else %}<span class="badge bg-warning text-dark">معلق</span>{% endif %}
+    </td>
+    <td>{{ d.collected_amount }}</td>
+    <td>
+      {% if d.status == 'PENDING' %}
+      <form method="POST" action="{{ url_for('fleet.complete_delivery', id=d.id) }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="number" name="collected_amount" step="0.001" class="form-control form-control-sm d-inline w-auto" placeholder="المحصّل">
+        <button class="btn btn-sm btn-success">تسليم</button>
+      </form>
+      <form method="POST" action="{{ url_for('fleet.return_delivery', id=d.id) }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm btn-danger">إعادة</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

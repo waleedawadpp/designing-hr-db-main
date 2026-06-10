@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}أمر تحميل جديد{% endblock %}
+{% block content %}
+<h4>أمر تحميل جديد</h4>
+<form method="POST" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">{{ form.vehicle_id.label }}{{ form.vehicle_id(class='form-select') }}</div>
+    <div class="col-md-4">{{ form.driver_id.label }}{{ form.driver_id(class='form-select') }}</div>
+    <div class="col-md-4">{{ form.date.label }}{{ form.date(class='form-control') }}</div>
+    <div class="col-md-4">{{ form.route_id.label }}{{ form.route_id(class='form-select') }}</div>
+    <div class="col-md-8">{{ form.notes.label }}{{ form.notes(class='form-control', rows=2) }}</div>
+  </div>
+  <h6>الفواتير المراد توزيعها</h6>
+  <table class="table table-sm table-bordered">
+    <thead><tr><th><input type="checkbox" id="check-all"></th><th>رقم الفاتورة</th><th>العميل</th><th>الإجمالي</th></tr></thead>
+    <tbody>
+    {% for inv in invoices %}
+    <tr>
+      <td><input type="checkbox" name="invoice_id[]" value="{{ inv.id }}" class="inv-check"></td>
+      <td>{{ inv.invoice_no }}</td>
+      <td>{{ inv.customer.name if inv.customer else '—' }}</td>
+      <td>{{ inv.grand_total }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <script>
+  document.getElementById('check-all').addEventListener('change', function() {
+    document.querySelectorAll('.inv-check').forEach(cb => cb.checked = this.checked);
+  });
+  </script>
+  <button class="btn btn-primary">حفظ</button>
+  <a href="{{ url_for('fleet.load_orders') }}" class="btn btn-secondary">إلغاء</a>
+</form>
+{% endblock %}

@@ -22,3 +22,8 @@ from .hr import (
     Employee, Contract, Attendance, Leave, SalaryPayment, Advance,
     EmployeeStatus, ContractType, LeaveType, LeaveStatus, AttendanceStatus
 )
+from .fleet import (
+    Vehicle, VehicleMaintenance, VehicleFuel, Route,
+    LoadOrder, LoadItem, Delivery,
+    VehicleStatus, LoadOrderStatus, DeliveryStatus
+)
