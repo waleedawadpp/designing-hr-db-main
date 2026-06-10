@@ -26,7 +26,7 @@ def customers():
     return render_template('sales/customers/index.html', customers=items)
 
 
-@sales_bp.route('/customers/add', methods=['GET', 'POST'])
+@sales_bp.route('/customers/new', methods=['GET', 'POST'])
 @login_required
 def add_customer():
     form = CustomerForm()

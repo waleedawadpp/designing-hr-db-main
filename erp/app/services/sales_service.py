@@ -78,10 +78,10 @@ def assign_invoice_no(invoice):
     from ..models.sales import SalesInvoice
     from ..models.core import Branch
     branch = db.session.get(Branch, invoice.branch_id)
-    year = date_type.today().year
+    year = invoice.date.year
     count = SalesInvoice.query.filter(
         SalesInvoice.branch_id == invoice.branch_id,
-        db.func.strftime('%Y', SalesInvoice.date) == str(year)
+        db.extract('year', SalesInvoice.date) == year
     ).count()
     prefix = branch.code if branch else 'INV'
     invoice.invoice_no = f"{prefix}-{year}-{count:05d}"

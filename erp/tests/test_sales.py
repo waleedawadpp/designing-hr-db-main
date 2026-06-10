@@ -64,7 +64,7 @@ def test_customers_list_loads(logged_in_client):
 
 
 def test_add_customer(app, logged_in_client):
-    rv = logged_in_client.post('/sales/customers/add', data={
+    rv = logged_in_client.post('/sales/customers/new', data={
         'name': 'عميل جديد',
         'type': 'WHOLESALE',
         'phone': '0501234567',
@@ -167,34 +167,194 @@ def test_confirm_invoice_deducts_stock(app, logged_in_client, seed_sales_data):
 
 
 def test_credit_limit_warning(app, logged_in_client):
-    """Customer over credit limit shows warning."""
+    """Customer over credit limit returns True; customer with no limit returns False."""
     from app.extensions import db
     from app.models import Customer, Branch, SalesInvoice, InvoiceStatus, InvoiceType
     with app.app_context():
         branch = Branch(code='CLB', name='فرع حد ائتمان')
         db.session.add(branch)
         db.session.flush()
+
+        # Customer with a credit_limit=100 and outstanding CREDIT invoice of 200
         customer = Customer(name='عميل محدود', credit_limit=100,
                             type='RETAIL', branch_id=branch.id)
         db.session.add(customer)
         db.session.flush()
-        # Create a confirmed credit invoice exceeding the limit
         inv = SalesInvoice(
             customer_id=customer.id, branch_id=branch.id,
             type=InvoiceType.CREDIT, date=date.today(),
             grand_total=200, amount_paid=0, status=InvoiceStatus.CONFIRMED
         )
         db.session.add(inv)
+
+        # Customer with credit_limit=0 (no limit) — should never be over limit
+        customer_no_limit = Customer(name='عميل بلا حد', credit_limit=0,
+                                     type='RETAIL', branch_id=branch.id)
+        db.session.add(customer_no_limit)
         db.session.commit()
+
         cust_id = customer.id
+        cust_no_limit_id = customer_no_limit.id
         inv_id = inv.id
         branch_id = branch.id
 
-    assert customer.is_over_credit_limit() or True  # just verify the method exists
+        # Re-fetch inside the same context to ensure ORM state is fresh
+        c = db.session.get(Customer, cust_id)
+        c_no_limit = db.session.get(Customer, cust_no_limit_id)
+
+        assert c.is_over_credit_limit() is True, (
+            "Customer with outstanding balance > credit_limit should return True"
+        )
+        assert c_no_limit.is_over_credit_limit() is False, (
+            "Customer with credit_limit=0 should never be over limit"
+        )
+
     # Cleanup
     with app.app_context():
         from app.models import SalesInvoice, Customer, Branch
         db.session.query(SalesInvoice).filter_by(id=inv_id).delete()
         db.session.query(Customer).filter_by(id=cust_id).delete()
+        db.session.query(Customer).filter_by(id=cust_no_limit_id).delete()
         db.session.query(Branch).filter_by(id=branch_id).delete()
+        db.session.commit()
+
+
+def test_double_confirm_raises(app, seed_user):
+    """Confirming an already-confirmed invoice raises ValueError."""
+    from app.extensions import db
+    from app.models import (
+        Branch, Warehouse, Product, ProductBatch, Customer,
+        SalesInvoice, InvoiceItem, InvoiceStatus, InvoiceType
+    )
+    from app.services.sales_service import assign_invoice_no, confirm_invoice
+    with app.app_context():
+        branch = db.session.get(Branch, seed_user.branch_id)
+        warehouse = Warehouse(branch_id=branch.id, name='مستودع مزدوج')
+        db.session.add(warehouse)
+        db.session.flush()
+
+        product = Product(
+            code='PDC01', name_ar='منتج مزدوج',
+            sale_price=50, cost_price=30, vat_rate=5, unit='PCS'
+        )
+        db.session.add(product)
+        db.session.flush()
+
+        batch = ProductBatch(
+            product_id=product.id, warehouse_id=warehouse.id,
+            batch_no='BDBL001', qty_on_hand=100, unit_cost=30
+        )
+        db.session.add(batch)
+
+        customer = Customer(name='عميل مزدوج', type='RETAIL',
+                            credit_limit=0, branch_id=branch.id)
+        db.session.add(customer)
+        db.session.flush()
+
+        invoice = SalesInvoice(
+            customer_id=customer.id, branch_id=branch.id,
+            type=InvoiceType.CASH, date=date.today(),
+            status=InvoiceStatus.DRAFT, created_by=seed_user.id
+        )
+        db.session.add(invoice)
+        db.session.flush()
+        assign_invoice_no(invoice)
+
+        item = InvoiceItem(
+            invoice_id=invoice.id, product_id=product.id,
+            qty=1, unit_price=50, discount_pct=0, vat_rate=5
+        )
+        db.session.add(item)
+        db.session.commit()
+        inv_id = invoice.id
+
+        # First confirmation should succeed
+        confirm_invoice(inv_id)
+
+        # Second confirmation must raise ValueError
+        import pytest as _pytest
+        with _pytest.raises(ValueError):
+            confirm_invoice(inv_id)
+
+        # Cleanup
+        from app.models import InvoiceItem as II
+        db.session.query(II).filter_by(invoice_id=inv_id).delete()
+        db.session.query(SalesInvoice).filter_by(id=inv_id).delete()
+        db.session.query(Customer).filter_by(id=customer.id).delete()
+        db.session.query(ProductBatch).filter_by(id=batch.id).delete()
+        db.session.query(Product).filter_by(id=product.id).delete()
+        db.session.query(Warehouse).filter_by(id=warehouse.id).delete()
+        db.session.commit()
+
+
+def test_invoice_no_format(app, seed_user):
+    """Confirmed invoice has invoice_no matching ^[A-Z0-9]+-\\d{4}-\\d{5}$ with correct year."""
+    import re
+    from app.extensions import db
+    from app.models import (
+        Branch, Warehouse, Product, ProductBatch, Customer,
+        SalesInvoice, InvoiceItem, InvoiceStatus, InvoiceType
+    )
+    from app.services.sales_service import assign_invoice_no, confirm_invoice
+    with app.app_context():
+        branch = db.session.get(Branch, seed_user.branch_id)
+        warehouse = Warehouse(branch_id=branch.id, name='مستودع تنسيق')
+        db.session.add(warehouse)
+        db.session.flush()
+
+        product = Product(
+            code='PFMT01', name_ar='منتج تنسيق',
+            sale_price=80, cost_price=50, vat_rate=5, unit='PCS'
+        )
+        db.session.add(product)
+        db.session.flush()
+
+        batch = ProductBatch(
+            product_id=product.id, warehouse_id=warehouse.id,
+            batch_no='BFMT001', qty_on_hand=50, unit_cost=50
+        )
+        db.session.add(batch)
+
+        customer = Customer(name='عميل تنسيق', type='RETAIL',
+                            credit_limit=0, branch_id=branch.id)
+        db.session.add(customer)
+        db.session.flush()
+
+        invoice = SalesInvoice(
+            customer_id=customer.id, branch_id=branch.id,
+            type=InvoiceType.CASH, date=date.today(),
+            status=InvoiceStatus.DRAFT, created_by=seed_user.id
+        )
+        db.session.add(invoice)
+        db.session.flush()
+        assign_invoice_no(invoice)
+
+        item = InvoiceItem(
+            invoice_id=invoice.id, product_id=product.id,
+            qty=2, unit_price=80, discount_pct=0, vat_rate=5
+        )
+        db.session.add(item)
+        db.session.commit()
+        inv_id = invoice.id
+
+        confirmed = confirm_invoice(inv_id)
+        invoice_no = confirmed.invoice_no
+
+        pattern = r'^[A-Z0-9]+-\d{4}-\d{5}$'
+        assert re.match(pattern, invoice_no), (
+            f"invoice_no '{invoice_no}' does not match pattern '{pattern}'"
+        )
+        year_in_no = int(invoice_no.split('-')[-2])
+        assert year_in_no == date.today().year, (
+            f"Year in invoice_no ({year_in_no}) does not match current year ({date.today().year})"
+        )
+
+        # Cleanup
+        from app.models import InvoiceItem as II
+        db.session.query(II).filter_by(invoice_id=inv_id).delete()
+        db.session.query(SalesInvoice).filter_by(id=inv_id).delete()
+        db.session.query(Customer).filter_by(id=customer.id).delete()
+        db.session.query(ProductBatch).filter_by(id=batch.id).delete()
+        db.session.query(Product).filter_by(id=product.id).delete()
+        db.session.query(Warehouse).filter_by(id=warehouse.id).delete()
         db.session.commit()
