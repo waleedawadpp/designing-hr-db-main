@@ -153,6 +153,10 @@ class SalaryPayment(db.Model):
     paid_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
+    __table_args__ = (
+        db.UniqueConstraint('employee_id', 'period', name='uq_salary_emp_period'),
+    )
+
 
 class Advance(db.Model):
     __tablename__ = 'advances'

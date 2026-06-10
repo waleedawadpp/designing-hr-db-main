@@ -37,10 +37,8 @@ def calculate_salary(employee_id: int, period: str,
     ).order_by(Advance.date).all()
     for adv in advances:
         if float(adv.monthly_deduction) > 0:
-            deduct = min(float(adv.monthly_deduction), adv.outstanding_balance())
-            advance_deduction += deduct
-            adv.repaid_amount = Decimal(str(float(adv.repaid_amount) + deduct))
-            break  # one advance at a time
+            advance_deduction = min(float(adv.monthly_deduction), adv.outstanding_balance())
+            break  # one advance at a time — mutation happens in create_salary_payment
 
     net = basic + allowances + overtime - extra_deductions - advance_deduction
     return {
@@ -59,8 +57,9 @@ def create_salary_payment(employee_id: int, period: str,
     """
     Create SalaryPayment, generate payroll journal entry, return payment.
     """
-    from ..models.hr import SalaryPayment
+    from ..models.hr import SalaryPayment, Advance
     from ..services.accounting_service import create_payroll_journal_entry
+    import logging
 
     data = calculate_salary(employee_id, period, overtime, extra_deductions)
     payment = SalaryPayment(
@@ -77,7 +76,16 @@ def create_salary_payment(employee_id: int, period: str,
     db.session.add(payment)
     db.session.flush()
 
-    import logging
+    # Apply advance repayment now that payment is staged
+    if data['advance_deduction'] > 0:
+        adv = Advance.query.filter(
+            Advance.employee_id == employee_id,
+            Advance.repaid_amount < Advance.amount,
+            Advance.monthly_deduction > 0,
+        ).order_by(Advance.date).first()
+        if adv:
+            adv.repaid_amount = Decimal(str(float(adv.repaid_amount) + data['advance_deduction']))
+
     logger = logging.getLogger(__name__)
     try:
         journal = create_payroll_journal_entry(payment)

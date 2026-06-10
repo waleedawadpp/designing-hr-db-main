@@ -18,7 +18,11 @@ logger = logging.getLogger(__name__)
 @hr_bp.route('/employees/')
 @login_required
 def employees():
-    emps = Employee.query.order_by(Employee.name).all()
+    from sqlalchemy.orm import joinedload
+    emps = (Employee.query
+            .options(joinedload(Employee.dept))
+            .order_by(Employee.name)
+            .all())
     return render_template('hr/employees/index.html', employees=emps)
 
 
@@ -220,7 +224,11 @@ def reject_leave(id):
 @hr_bp.route('/salary/')
 @login_required
 def salary_list():
-    payments = SalaryPayment.query.order_by(SalaryPayment.period.desc()).all()
+    from sqlalchemy.orm import joinedload
+    payments = (SalaryPayment.query
+                .options(joinedload(SalaryPayment.employee))
+                .order_by(SalaryPayment.period.desc())
+                .all())
     return render_template('hr/salary/index.html', payments=payments)
 
 
