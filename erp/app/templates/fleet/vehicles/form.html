@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<h4>{{ title }}</h4>
+<form method="POST" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="row g-3">
+    <div class="col-md-3">{{ form.plate_no.label }}{{ form.plate_no(class='form-control') }}</div>
+    <div class="col-md-3">{{ form.model.label }}{{ form.model(class='form-control') }}</div>
+    <div class="col-md-2">{{ form.year.label }}{{ form.year(class='form-control') }}</div>
+    <div class="col-md-4">{{ form.driver_id.label }}{{ form.driver_id(class='form-select') }}</div>
+    <div class="col-md-4">{{ form.branch_id.label }}{{ form.branch_id(class='form-select') }}</div>
+    <div class="col-md-3">{{ form.license_expiry.label }}{{ form.license_expiry(class='form-control') }}</div>
+    <div class="col-md-3">{{ form.status.label }}{{ form.status(class='form-select') }}</div>
+  </div>
+  <div class="mt-3">
+    <button class="btn btn-primary">حفظ</button>
+    <a href="{{ url_for('fleet.vehicles') }}" class="btn btn-secondary">إلغاء</a>
+  </div>
+</form>
+{% endblock %}

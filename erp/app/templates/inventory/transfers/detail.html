@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}تفاصيل النقل #{{ transfer.id }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4>نقل مخزون رقم #{{ transfer.id }}</h4>
+  {% if transfer.status == 'PENDING' %}
+  <form method="POST" action="{{ url_for('inventory.confirm_transfer', id=transfer.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-success">✓ تأكيد النقل</button>
+  </form>
+  {% else %}
+  <span class="badge bg-success fs-6">مؤكد</span>
+  {% endif %}
+</div>
+<dl class="row">
+  <dt class="col-sm-3">من مستودع</dt><dd class="col-sm-9">{{ transfer.from_warehouse.name if transfer.from_warehouse else '—' }}</dd>
+  <dt class="col-sm-3">إلى مستودع</dt><dd class="col-sm-9">{{ transfer.to_warehouse.name if transfer.to_warehouse else '—' }}</dd>
+  <dt class="col-sm-3">التاريخ</dt><dd class="col-sm-9">{{ transfer.date }}</dd>
+</dl>
+<table class="table table-bordered">
+  <thead><tr><th>الصنف</th><th>الكمية</th></tr></thead>
+  <tbody>
+  {% for item in transfer.items %}
+  <tr>
+    <td>{{ item.product.name_ar if item.product else item.product_id }}</td>
+    <td>{{ item.qty }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center mb-3 gap-2">
+  <a href="{{ url_for('accounting.coa') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-right"></i>
+  </a>
+  <h4 class="mb-0">{{ title }}</h4>
+</div>
+<div class="card" style="max-width:600px">
+  <div class="card-body">
+    <form method="POST">
+      {{ form.hidden_tag() }}
+      <div class="mb-3">
+        <label class="form-label fw-semibold">{{ form.code.label }}</label>
+        {{ form.code(class="form-control", placeholder="مثال: 1101") }}
+        {% for e in form.code.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">{{ form.name_ar.label }}</label>
+        {{ form.name_ar(class="form-control", placeholder="اسم الحساب بالعربي") }}
+        {% for e in form.name_ar.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">{{ form.name_en.label }}</label>
+        {{ form.name_en(class="form-control", placeholder="Account name in English (optional)") }}
+      </div>
+      <div class="row g-3 mb-3">
+        <div class="col">
+          <label class="form-label fw-semibold">{{ form.type.label }}</label>
+          {{ form.type(class="form-select") }}
+        </div>
+        <div class="col">
+          <label class="form-label fw-semibold">{{ form.normal_balance.label }}</label>
+          {{ form.normal_balance(class="form-select") }}
+        </div>
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-semibold">{{ form.parent_id.label }}</label>
+        {{ form.parent_id(class="form-select") }}
+      </div>
+      {{ form.submit(class="btn btn-primary") }}
+      <a href="{{ url_for('accounting.coa') }}" class="btn btn-outline-secondary ms-2">إلغاء</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

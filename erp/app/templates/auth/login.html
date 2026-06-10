@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}تسجيل الدخول{% endblock %}
+{% block auth_content %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center bg-light">
+  <div class="card shadow-sm" style="width:400px">
+    <div class="card-body p-5">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+          </div>
+        {% endfor %}
+      {% endwith %}
+      <div class="text-center mb-4">
+        <i class="bi bi-grid-3x3-gap-fill text-primary" style="font-size:3rem"></i>
+        <h4 class="mt-2 fw-bold">نظام إدارة الأعمال ERP</h4>
+        <p class="text-muted small">تسجيل الدخول للمتابعة</p>
+      </div>
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+          <label class="form-label fw-semibold">{{ form.username.label }}</label>
+          {{ form.username(class="form-control form-control-lg", placeholder="أدخل اسم المستخدم", autofocus=true) }}
+          {% for error in form.username.errors %}
+            <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">{{ form.password.label }}</label>
+          {{ form.password(class="form-control form-control-lg", placeholder="أدخل كلمة المرور") }}
+          {% for error in form.password.errors %}
+            <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="mb-4 form-check">
+          {{ form.remember_me(class="form-check-input") }}
+          <label class="form-check-label" for="{{ form.remember_me.id }}">{{ form.remember_me.label.text }}</label>
+        </div>
+        {{ form.submit(class="btn btn-primary btn-lg w-100") }}
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

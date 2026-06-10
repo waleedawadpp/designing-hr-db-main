@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}مركبة {{ v.plate_no }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3">
+  <h4>{{ v.plate_no }} — {{ v.model or '' }}</h4>
+  <a href="{{ url_for('fleet.edit_vehicle', id=v.id) }}" class="btn btn-outline-secondary">تعديل</a>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><strong>الحالة:</strong> {{ v.status_label() }}</div>
+  <div class="col-md-3"><strong>السائق:</strong> {{ v.driver.full_name if v.driver else '—' }}</div>
+  <div class="col-md-3"><strong>انتهاء الرخصة:</strong> {{ v.license_expiry or '—' }}</div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">إضافة صيانة</div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('fleet.add_maintenance', vehicle_id=v.id) }}" novalidate>
+          {{ maint_form.hidden_tag() }}
+          <div class="row g-2">
+            <div class="col-6">{{ maint_form.date(class='form-control') }}</div>
+            <div class="col-6">{{ maint_form.type(class='form-control', placeholder='نوع الصيانة') }}</div>
+            <div class="col-6">{{ maint_form.cost(class='form-control', placeholder='التكلفة') }}</div>
+            <div class="col-6">{{ maint_form.next_due_date(class='form-control') }}</div>
+            <div class="col-12"><button class="btn btn-outline-warning btn-sm">+ تسجيل صيانة</button></div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">إضافة وقود</div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('fleet.add_fuel', vehicle_id=v.id) }}" novalidate>
+          {{ fuel_form.hidden_tag() }}
+          <div class="row g-2">
+            <div class="col-4">{{ fuel_form.date(class='form-control') }}</div>
+            <div class="col-4">{{ fuel_form.liters(class='form-control', placeholder='اللترات') }}</div>
+            <div class="col-4">{{ fuel_form.cost(class='form-control', placeholder='التكلفة') }}</div>
+            <div class="col-12"><button class="btn btn-outline-info btn-sm">+ تسجيل وقود</button></div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-3">
+  <div class="card-header">سجل الصيانة</div>
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0">
+      <thead><tr><th>التاريخ</th><th>النوع</th><th>التكلفة</th><th>الموعد القادم</th></tr></thead>
+      <tbody>
+      {% for m in recent_maint %}
+      <tr><td>{{ m.date }}</td><td>{{ m.type or '—' }}</td><td>{{ m.cost }}</td><td>{{ m.next_due_date or '—' }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

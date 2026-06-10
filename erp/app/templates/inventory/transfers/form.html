@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}طلب نقل جديد{% endblock %}
+{% block content %}
+<h4>طلب نقل مخزون</h4>
+<form method="POST" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">{{ form.from_warehouse_id.label }}{{ form.from_warehouse_id(class='form-select') }}</div>
+    <div class="col-md-4">{{ form.to_warehouse_id.label }}{{ form.to_warehouse_id(class='form-select') }}</div>
+    <div class="col-md-4">{{ form.date.label }}{{ form.date(class='form-control') }}</div>
+  </div>
+  <h6>الأصناف</h6>
+  <table class="table table-bordered" id="items-table">
+    <thead><tr><th>الصنف</th><th>الكمية</th><th></th></tr></thead>
+    <tbody id="items-body">
+      <tr class="item-row">
+        <td><select name="product_id[]" class="form-select">
+          {% for p in products %}<option value="{{ p.id }}">{{ p.code }} — {{ p.name_ar }}</option>{% endfor %}
+        </select></td>
+        <td><input type="number" name="qty[]" class="form-control" step="0.001" min="0.001" required></td>
+        <td><button type="button" class="btn btn-sm btn-danger remove-row">✕</button></td>
+      </tr>
+    </tbody>
+  </table>
+  <button type="button" class="btn btn-outline-secondary mb-3" id="add-row">+ إضافة صنف</button>
+  <div><button class="btn btn-primary">حفظ الطلب</button>
+  <a href="{{ url_for('inventory.transfers') }}" class="btn btn-secondary">إلغاء</a></div>
+</form>
+<script>
+document.getElementById('add-row').addEventListener('click', function() {
+  const tbody = document.getElementById('items-body');
+  const first = tbody.querySelector('.item-row');
+  const clone = first.cloneNode(true);
+  clone.querySelector('input').value = '';
+  tbody.appendChild(clone);
+});
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('remove-row')) {
+    const rows = document.querySelectorAll('.item-row');
+    if (rows.length > 1) e.target.closest('tr').remove();
+  }
+});
+</script>
+{% endblock %}

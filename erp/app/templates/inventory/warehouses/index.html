@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}المستودعات{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4>المستودعات</h4>
+  <a href="{{ url_for('inventory.new_warehouse') }}" class="btn btn-primary">+ إضافة مستودع</a>
+</div>
+<table class="table table-bordered table-hover">
+  <thead class="table-light"><tr><th>#</th><th>الاسم</th><th>الفرع</th><th>الموقع</th><th></th></tr></thead>
+  <tbody>
+  {% for w in warehouses %}
+  <tr>
+    <td>{{ w.id }}</td><td>{{ w.name }}</td>
+    <td>{{ w.branch.name if w.branch else '—' }}</td>
+    <td>{{ w.location or '—' }}</td>
+    <td><a href="{{ url_for('inventory.edit_warehouse', id=w.id) }}" class="btn btn-sm btn-outline-secondary">تعديل</a></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

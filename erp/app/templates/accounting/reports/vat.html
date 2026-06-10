@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block title %}تقرير ضريبة القيمة المضافة{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0"><i class="bi bi-percent me-2"></i>تقرير ضريبة القيمة المضافة</h4>
+</div>
+
+<!-- Filter Form -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label fw-semibold">من تاريخ</label>
+        <input type="date" name="from_date" class="form-control" value="{{ from_date }}">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-semibold">إلى تاريخ</label>
+        <input type="date" name="to_date" class="form-control" value="{{ to_date }}">
+      </div>
+      <div class="col-md-4">
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="bi bi-search me-1"></i>عرض
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<p class="text-muted mb-3">الفترة: من <strong>{{ from_date }}</strong> إلى <strong>{{ to_date }}</strong></p>
+
+<div class="row g-4 mb-4">
+  <!-- Output Tax -->
+  <div class="col-md-4">
+    <div class="card shadow-sm border-success">
+      <div class="card-header bg-success text-white fw-bold">
+        <i class="bi bi-arrow-up-circle me-2"></i>ضريبة المخرجات
+      </div>
+      <div class="card-body text-center py-4">
+        <h3 class="fw-bold text-success">{{ '%.3f'|format(output_tax) }}</h3>
+        {% if output_acc %}
+        <small class="text-muted">{{ output_acc.code }} — {{ output_acc.name_ar }}</small>
+        {% else %}
+        <small class="text-muted text-danger">حساب 2102 غير موجود</small>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Input Tax -->
+  <div class="col-md-4">
+    <div class="card shadow-sm border-warning">
+      <div class="card-header bg-warning text-dark fw-bold">
+        <i class="bi bi-arrow-down-circle me-2"></i>ضريبة المدخلات
+      </div>
+      <div class="card-body text-center py-4">
+        <h3 class="fw-bold text-warning">{{ '%.3f'|format(input_tax) }}</h3>
+        {% if input_acc %}
+        <small class="text-muted">{{ input_acc.code }} — {{ input_acc.name_ar }}</small>
+        {% else %}
+        <small class="text-muted text-danger">حساب 1105 غير موجود</small>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Net VAT -->
+  <div class="col-md-4">
+    <div class="card shadow-sm {% if net_vat >= 0 %}border-danger{% else %}border-info{% endif %}">
+      <div class="card-header {% if net_vat >= 0 %}bg-danger{% else %}bg-info{% endif %} text-white fw-bold">
+        <i class="bi bi-calculator me-2"></i>صافي ضريبة القيمة المضافة
+      </div>
+      <div class="card-body text-center py-4">
+        <h3 class="fw-bold {% if net_vat >= 0 %}text-danger{% else %}text-info{% endif %}">
+          {{ '%.3f'|format(net_vat) }}
+        </h3>
+        <small class="text-muted">
+          {% if net_vat > 0 %}مبلغ مستحق للدفع للجهة الضريبية
+          {% elif net_vat < 0 %}مبلغ مستحق الاسترداد
+          {% else %}لا يوجد ضريبة مستحقة
+          {% endif %}
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- VAT Summary Table -->
+<div class="card shadow-sm">
+  <div class="card-header bg-primary text-white fw-bold">ملخص ضريبة القيمة المضافة</div>
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0">
+      <tbody>
+        <tr>
+          <td class="fw-semibold">ضريبة المخرجات (مبيعات)</td>
+          <td class="text-end fw-semibold text-success">{{ '%.3f'|format(output_tax) }}</td>
+        </tr>
+        <tr>
+          <td class="fw-semibold">ضريبة المدخلات (مشتريات)</td>
+          <td class="text-end fw-semibold text-warning">{{ '%.3f'|format(input_tax) }}</td>
+        </tr>
+        <tr class="table-light fw-bold">
+          <td>صافي الضريبة المستحقة = ضريبة المخرجات — ضريبة المدخلات</td>
+          <td class="text-end {% if net_vat >= 0 %}text-danger{% else %}text-info{% endif %}">
+            {{ '%.3f'|format(net_vat) }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

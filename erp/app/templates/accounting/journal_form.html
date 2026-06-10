@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}قيد يومي جديد{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center mb-3 gap-2">
+  <a href="{{ url_for('accounting.journal_list') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-right"></i>
+  </a>
+  <h4 class="mb-0">قيد يومي جديد</h4>
+</div>
+<form method="POST" id="journal-form">
+  {{ form.hidden_tag() }}
+  <div class="row g-3 mb-3">
+    <div class="col-md-3">
+      <label class="form-label fw-semibold">{{ form.date.label }}</label>
+      {{ form.date(class="form-control") }}
+    </div>
+    <div class="col-md-9">
+      <label class="form-label fw-semibold">{{ form.description.label }}</label>
+      {{ form.description(class="form-control", rows=1, placeholder="البيان") }}
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span class="fw-semibold">بنود القيد</span>
+      <button type="button" class="btn btn-sm btn-outline-primary" onclick="addLine()">
+        <i class="bi bi-plus-circle"></i> إضافة سطر
+      </button>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width:40%">الحساب</th>
+            <th style="width:20%">مدين</th>
+            <th style="width:20%">دائن</th>
+            <th style="width:15%">البيان</th>
+            <th style="width:5%"></th>
+          </tr>
+        </thead>
+        <tbody id="lines-body"></tbody>
+        <tfoot class="table-light fw-bold">
+          <tr>
+            <td>الإجمالي</td>
+            <td id="total-debit">0.000</td>
+            <td id="total-credit">0.000</td>
+            <td colspan="2" id="balance-status" class="text-success">متوازن ✓</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+  {{ form.submit(class="btn btn-success") }}
+  <a href="{{ url_for('accounting.journal_list') }}" class="btn btn-outline-secondary ms-2">إلغاء</a>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const accountOptions = [
+  {% for acc in accounts %}
+  { id: {{ acc.id }}, code: "{{ acc.code }}", name: "{{ acc.name_ar }}" },
+  {% endfor %}
+];
+
+let lineIdx = 0;
+
+function addLine() {
+  const body = document.getElementById('lines-body');
+  const idx = lineIdx++;
+  const optHtml = accountOptions.map(a =>
+    `<option value="${a.id}">${a.code} — ${a.name}</option>`
+  ).join('');
+  const tr = document.createElement('tr');
+  tr.id = `line-${idx}`;
+  tr.innerHTML = `
+    <td><select name="lines-${idx}-account_id" class="form-select form-select-sm"
+        onchange="recalc()"><option value="">— اختر —</option>${optHtml}</select></td>
+    <td><input type="number" name="lines-${idx}-debit" class="form-control form-control-sm"
+        step="0.001" value="0" oninput="recalc()"></td>
+    <td><input type="number" name="lines-${idx}-credit" class="form-control form-control-sm"
+        step="0.001" value="0" oninput="recalc()"></td>
+    <td><input type="text" name="lines-${idx}-description" class="form-control form-control-sm"
+        placeholder="بيان"></td>
+    <td><button type="button" class="btn btn-sm btn-outline-danger"
+        onclick="removeLine(${idx})"><i class="bi bi-trash"></i></button></td>
+  `;
+  body.appendChild(tr);
+  recalc();
+}
+
+function removeLine(idx) {
+  document.getElementById(`line-${idx}`)?.remove();
+  recalc();
+}
+
+function recalc() {
+  let d = 0, c = 0;
+  document.querySelectorAll('#lines-body tr').forEach(row => {
+    const inputs = row.querySelectorAll('input[type=number]');
+    d += parseFloat(inputs[0]?.value || 0);
+    c += parseFloat(inputs[1]?.value || 0);
+  });
+  document.getElementById('total-debit').textContent = d.toFixed(3);
+  document.getElementById('total-credit').textContent = c.toFixed(3);
+  const balanced = Math.abs(d - c) < 0.001;
+  const status = document.getElementById('balance-status');
+  status.textContent = balanced ? 'متوازن ✓' : `فرق: ${Math.abs(d - c).toFixed(3)}`;
+  status.className = balanced ? 'text-success' : 'text-danger';
+}
+
+// Start with 2 lines
+addLine(); addLine();
+</script>
+{% endblock %}

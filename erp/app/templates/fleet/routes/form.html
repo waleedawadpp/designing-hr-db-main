@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<h4>{{ title }}</h4>
+<form method="POST" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="mb-3">{{ form.name.label }}{{ form.name(class='form-control') }}</div>
+  <div class="mb-3">{{ form.branch_id.label }}{{ form.branch_id(class='form-select') }}</div>
+  <button class="btn btn-primary">حفظ</button>
+  <a href="{{ url_for('fleet.route_list') }}" class="btn btn-secondary">إلغاء</a>
+</form>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}حركات المخزون{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4>حركات المخزون</h4>
+  <a href="{{ url_for('inventory.new_movement') }}" class="btn btn-primary">+ حركة جديدة</a>
+</div>
+<table class="table table-sm table-bordered">
+  <thead class="table-light">
+    <tr><th>التاريخ</th><th>الصنف</th><th>المستودع</th><th>النوع</th><th>الكمية</th><th>المصدر</th><th>المرجع</th></tr>
+  </thead>
+  <tbody>
+  {% for m in movements %}
+  <tr>
+    <td>{{ m.created_at.strftime('%Y-%m-%d') }}</td>
+    <td>{{ m.product.name_ar if m.product else m.product_id }}</td>
+    <td>{{ m.warehouse.name if m.warehouse else '—' }}</td>
+    <td>
+      {% if m.type == 'IN' %}<span class="badge bg-success">وارد</span>
+      {% elif m.type == 'OUT' %}<span class="badge bg-danger">صادر</span>
+      {% else %}<span class="badge bg-warning text-dark">تسوية</span>{% endif %}
+    </td>
+    <td class="{{ 'text-success' if float(m.qty) > 0 else 'text-danger' }}">{{ m.qty }}</td>
+    <td>{{ m.source or '—' }}</td>
+    <td>{{ m.reference or '—' }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

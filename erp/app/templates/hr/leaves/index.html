@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}طلبات الإجازات{% endblock %}
+{% block content %}
+<h4>طلبات الإجازات</h4>
+<table class="table table-bordered table-hover">
+  <thead class="table-light">
+    <tr><th>الموظف</th><th>النوع</th><th>من</th><th>إلى</th><th>الأيام</th><th>الحالة</th><th></th></tr>
+  </thead>
+  <tbody>
+  {% for leave in leaves %}
+  <tr>
+    <td>{{ leave.employee.name if leave.employee else '—' }}</td>
+    <td>{{ leave.type_label() }}</td>
+    <td>{{ leave.start_date }}</td><td>{{ leave.end_date }}</td>
+    <td>{{ leave.days_count() }}</td>
+    <td>
+      {% if leave.status == 'PENDING' %}<span class="badge bg-warning text-dark">معلقة</span>
+      {% elif leave.status == 'APPROVED' %}<span class="badge bg-success">معتمدة</span>
+      {% else %}<span class="badge bg-danger">مرفوضة</span>{% endif %}
+    </td>
+    <td>
+      {% if leave.status == 'PENDING' %}
+      <form method="POST" action="{{ url_for('hr.approve_leave', id=leave.id) }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm btn-success">اعتماد</button>
+      </form>
+      <form method="POST" action="{{ url_for('hr.reject_leave', id=leave.id) }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm btn-danger">رفض</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

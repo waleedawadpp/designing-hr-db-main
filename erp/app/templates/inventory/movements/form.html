@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}حركة مخزون جديدة{% endblock %}
+{% block content %}
+<h4>تسجيل حركة مخزون</h4>
+<form method="POST" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="row g-3">
+    <div class="col-md-4">{{ form.product_id.label }}{{ form.product_id(class='form-select') }}</div>
+    <div class="col-md-4">{{ form.warehouse_id.label }}{{ form.warehouse_id(class='form-select') }}</div>
+    <div class="col-md-4">{{ form.type.label }}{{ form.type(class='form-select') }}</div>
+    <div class="col-md-2">{{ form.qty.label }}{{ form.qty(class='form-control') }}</div>
+    <div class="col-md-3">{{ form.batch_no.label }}{{ form.batch_no(class='form-control') }}</div>
+    <div class="col-md-3">{{ form.expiry_date.label }}{{ form.expiry_date(class='form-control') }}</div>
+    <div class="col-md-2">{{ form.date.label }}{{ form.date(class='form-control') }}</div>
+    <div class="col-md-2">{{ form.reference.label }}{{ form.reference(class='form-control') }}</div>
+  </div>
+  <div class="mt-3">
+    <button class="btn btn-primary">حفظ</button>
+    <a href="{{ url_for('inventory.movements') }}" class="btn btn-secondary">إلغاء</a>
+  </div>
+</form>
+{% endblock %}

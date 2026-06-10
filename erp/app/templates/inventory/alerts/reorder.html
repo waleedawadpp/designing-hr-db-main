@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}تنبيهات إعادة الطلب{% endblock %}
+{% block content %}
+<h4>الأصناف التي تحتاج إعادة طلب</h4>
+{% if alerts %}
+<table class="table table-bordered table-hover">
+  <thead class="table-light">
+    <tr><th>الصنف</th><th>الكود</th><th>المخزون الحالي</th><th>الحد الأدنى</th><th>النقص</th></tr>
+  </thead>
+  <tbody>
+  {% for product, total_qty in alerts %}
+  <tr class="table-warning">
+    <td>{{ product.name_ar }}</td>
+    <td>{{ product.code }}</td>
+    <td>{{ (total_qty or 0)|round(3) }}</td>
+    <td>{{ product.reorder_level }}</td>
+    <td>{{ (product.reorder_level|float - (total_qty or 0)|float)|round(3) }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="alert alert-success">لا توجد أصناف تحتاج إلى إعادة طلب حالياً.</div>
+{% endif %}
+{% endblock %}
