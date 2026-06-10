@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}أمر شراء #{{ po.id }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4>أمر الشراء #{{ po.id }}</h4>
+  <div>
+    {% if po.status == 'DRAFT' %}
+    <form method="POST" action="{{ url_for('purchasing.approve_order', id=po.id) }}" class="d-inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-success">✓ اعتماد</button>
+    </form>
+    <form method="POST" action="{{ url_for('purchasing.cancel_order', id=po.id) }}" class="d-inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-danger">✕ إلغاء</button>
+    </form>
+    {% endif %}
+    <span class="badge {{ po.status_badge_class() }} fs-6">{{ po.status_label() }}</span>
+  </div>
+</div>
+<dl class="row">
+  <dt class="col-3">المورد</dt><dd class="col-9">{{ po.supplier.name if po.supplier else '—' }}</dd>
+  <dt class="col-3">التاريخ</dt><dd class="col-9">{{ po.date }}</dd>
+  <dt class="col-3">العملة</dt><dd class="col-9">{{ po.currency }}</dd>
+  <dt class="col-3">الإجمالي</dt><dd class="col-9">{{ po.total_amount }}</dd>
+</dl>
+<h6>الأصناف</h6>
+<table class="table table-bordered">
+  <thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead>
+  <tbody>
+  {% for item in po.items %}
+  <tr>
+    <td>{{ item.product.name_ar if item.product else item.product_id }}</td>
+    <td>{{ item.qty }}</td><td>{{ item.unit_price }}</td><td>{{ item.total_price }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h6>تكاليف الاستيراد</h6>
+{% if po.status in ('DRAFT', 'APPROVED') %}
+<form method="POST" action="{{ url_for('purchasing.add_import_cost', po_id=po.id) }}" class="row g-2 mb-3">
+  {{ import_cost_form.hidden_tag() }}
+  <div class="col-md-3">{{ import_cost_form.cost_type(class='form-select') }}</div>
+  <div class="col-md-2">{{ import_cost_form.amount(class='form-control', placeholder='المبلغ') }}</div>
+  <div class="col-md-2">{{ import_cost_form.currency(class='form-select') }}</div>
+  <div class="col-md-3">{{ import_cost_form.notes(class='form-control', placeholder='ملاحظة') }}</div>
+  <div class="col-md-2"><button class="btn btn-outline-primary w-100">+ إضافة</button></div>
+</form>
+{% endif %}
+<table class="table table-sm table-bordered">
+  <thead><tr><th>النوع</th><th>المبلغ</th><th>العملة</th><th>ملاحظة</th></tr></thead>
+  <tbody>
+  {% for cost in po.import_costs %}
+  <tr><td>{{ cost.cost_type }}</td><td>{{ cost.amount }}</td><td>{{ cost.currency }}</td><td>{{ cost.notes or '' }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h6>الاستلامات</h6>
+{% if po.status == 'APPROVED' %}
+<a href="{{ url_for('purchasing.new_receipt', po_id=po.id) }}" class="btn btn-outline-primary btn-sm mb-2">+ استلام جديد</a>
+{% endif %}
+{% for receipt in po.receipts %}
+<div class="card mb-2">
+  <div class="card-body p-2">
+    <strong>استلام #{{ receipt.id }}</strong> — {{ receipt.date }}
+    {% if not receipt.journal_id %}
+    <form method="POST" action="{{ url_for('purchasing.confirm_receipt', po_id=po.id, receipt_id=receipt.id) }}" class="d-inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-success btn-sm">تأكيد الاستلام</button>
+    </form>
+    {% else %}
+    <span class="badge bg-success">مؤكد</span>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

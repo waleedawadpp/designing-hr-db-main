@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}استلام بضاعة — أمر #{{ po.id }}{% endblock %}
+{% block content %}
+<h4>استلام بضاعة — أمر شراء #{{ po.id }}</h4>
+<form method="POST" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">{{ form.warehouse_id.label }}{{ form.warehouse_id(class='form-select') }}</div>
+    <div class="col-md-3">{{ form.date.label }}{{ form.date(class='form-control') }}</div>
+  </div>
+  <h6>الأصناف المستلمة</h6>
+  <table class="table table-bordered" id="items-table">
+    <thead><tr><th>الصنف</th><th>الكمية</th><th>رقم الدفعة</th><th>تاريخ الانتهاء</th><th>سعر التكلفة</th><th></th></tr></thead>
+    <tbody id="items-body">
+    {% for item in po.items %}
+    <tr class="item-row">
+      <td>
+        <input type="hidden" name="product_id[]" value="{{ item.product_id }}">
+        <span>{{ item.product.name_ar if item.product else item.product_id }}</span>
+        <small class="text-muted">(مطلوب: {{ item.qty }})</small>
+      </td>
+      <td><input type="number" name="qty_received[]" class="form-control" step="0.001" min="0" value="{{ item.qty }}"></td>
+      <td><input type="text" name="batch_no[]" class="form-control"></td>
+      <td><input type="date" name="expiry_date[]" class="form-control"></td>
+      <td><input type="number" name="unit_cost[]" class="form-control" step="0.001" min="0" value="{{ item.unit_price }}"></td>
+      <td></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <button class="btn btn-primary">حفظ الاستلام</button>
+  <a href="{{ url_for('purchasing.order_detail', id=po.id) }}" class="btn btn-secondary">إلغاء</a>
+</form>
+{% endblock %}

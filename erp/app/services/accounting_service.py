@@ -114,3 +114,39 @@ def create_sales_journal_entry(invoice):
         branch_id=invoice.branch_id,
         created_by=invoice.created_by,
     )
+
+
+def create_purchase_journal_entry(receipt):
+    """
+    Auto-generate journal for a confirmed goods receipt.
+    DEBIT:  مخزون بضاعة (1104) — inventory
+    CREDIT: ذمم دائنة موردين (2101) — accounts payable
+    """
+    from ..models.accounting import Account
+
+    def get_account(code):
+        return Account.query.filter_by(code=code).first()
+
+    inventory_acc = get_account('1104')
+    payable_acc = get_account('2101')
+
+    total = sum(float(item.qty_received) * float(item.unit_cost)
+                for item in receipt.items)
+    total += sum(float(c.amount) for c in receipt.po.import_costs)
+
+    if total == 0 or not inventory_acc or not payable_acc:
+        return None
+
+    lines = [
+        {'account_id': inventory_acc.id, 'debit': total, 'credit': 0,
+         'description': f'استلام بضاعة GR-{receipt.id}'},
+        {'account_id': payable_acc.id, 'debit': 0, 'credit': total,
+         'description': f'مورد: {receipt.po.supplier.name}'},
+    ]
+    return create_manual_journal(
+        date=receipt.date,
+        description=f'استلام بضاعة رقم GR-{receipt.id}',
+        lines=lines,
+        branch_id=receipt.po.branch_id,
+        created_by=receipt.created_by,
+    )
