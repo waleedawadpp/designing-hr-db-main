@@ -21,8 +21,6 @@ logger = logging.getLogger(__name__)
 @fleet_bp.route('/vehicles/')
 @login_required
 def vehicles():
-    from datetime import date
-    today = date.today()
     vs = Vehicle.query.options(joinedload(Vehicle.driver)).order_by(Vehicle.plate_no).all()
     # Flag vehicles with license expiring within 30 days
     alerts = [v for v in vs if v.is_license_expiring_soon(30)]
@@ -122,6 +120,10 @@ def add_maintenance(vehicle_id):
 @fleet_bp.route('/vehicles/<int:vehicle_id>/fuel/add', methods=['POST'])
 @login_required
 def add_fuel(vehicle_id):
+    v = db.session.get(Vehicle, vehicle_id)
+    if not v:
+        flash('المركبة غير موجودة', 'danger')
+        return redirect(url_for('fleet.vehicles'))
     form = FuelForm()
     if form.validate_on_submit():
         fuel = VehicleFuel(
@@ -187,41 +189,40 @@ def new_load_order():
     form.route_id.choices = [(0, '— اختر مساراً —')] + [(r.id, r.name) for r in Route.query.all()]
     invoices = SalesInvoice.query.filter_by(status=InvoiceStatus.CONFIRMED).order_by(SalesInvoice.date.desc()).limit(100).all()
     if form.validate_on_submit():
-        lo = LoadOrder(
-            vehicle_id=form.vehicle_id.data,
-            driver_id=form.driver_id.data or None,
-            route_id=form.route_id.data or None,
-            date=form.date.data,
-            notes=form.notes.data,
-            status=LoadOrderStatus.PENDING,
-            created_by=current_user.id,
-        )
-        db.session.add(lo)
-        db.session.flush()
-
-        # Generate ref_no
-        lo.ref_no = f'LO-{date_type.today().year}-{lo.id:05d}'
-
-        # Parse selected invoices
-        invoice_ids = request.form.getlist('invoice_id[]')
-        for inv_id_str in invoice_ids:
-            try:
-                inv_id = int(inv_id_str)
-                item = LoadItem(load_order_id=lo.id, invoice_id=inv_id)
-                db.session.add(item)
-                # Create delivery record for each invoice
-                delivery = Delivery(
-                    load_order_id=lo.id,
-                    invoice_id=inv_id,
-                    status=DeliveryStatus.PENDING,
-                )
-                db.session.add(delivery)
-            except (ValueError, TypeError):
-                pass
-
-        db.session.commit()
-        flash('تم إنشاء أمر التحميل', 'success')
-        return redirect(url_for('fleet.load_order_detail', id=lo.id))
+        try:
+            lo = LoadOrder(
+                vehicle_id=form.vehicle_id.data,
+                driver_id=form.driver_id.data or None,
+                route_id=form.route_id.data or None,
+                date=form.date.data,
+                notes=form.notes.data,
+                status=LoadOrderStatus.PENDING,
+                created_by=current_user.id,
+            )
+            db.session.add(lo)
+            db.session.flush()
+            lo.ref_no = f'LO-{date_type.today().year}-{lo.id:05d}'
+            invoice_ids = request.form.getlist('invoice_id[]')
+            for inv_id_str in invoice_ids:
+                try:
+                    inv_id = int(inv_id_str)
+                    item = LoadItem(load_order_id=lo.id, invoice_id=inv_id)
+                    db.session.add(item)
+                    delivery = Delivery(
+                        load_order_id=lo.id,
+                        invoice_id=inv_id,
+                        status=DeliveryStatus.PENDING,
+                    )
+                    db.session.add(delivery)
+                except (ValueError, TypeError):
+                    logger.warning('Invalid invoice_id: %s', inv_id_str)
+            db.session.commit()
+            flash('تم إنشاء أمر التحميل', 'success')
+            return redirect(url_for('fleet.load_order_detail', id=lo.id))
+        except Exception:
+            db.session.rollback()
+            logger.exception('Failed to create load order')
+            flash('حدث خطأ أثناء إنشاء أمر التحميل', 'danger')
     return render_template('fleet/load_orders/form.html', form=form, invoices=invoices)
 
 
@@ -259,7 +260,7 @@ def complete_delivery(id):
         return redirect(url_for('fleet.load_orders'))
     collected = request.form.get('collected_amount', '0')
     try:
-        delivery.collected_amount = Decimal(str(float(collected)))
+        delivery.collected_amount = Decimal(collected)
     except (ValueError, TypeError):
         delivery.collected_amount = Decimal('0')
     delivery.status = DeliveryStatus.DELIVERED
@@ -279,7 +280,10 @@ def complete_delivery(id):
 @login_required
 def return_delivery(id):
     delivery = db.session.get(Delivery, id)
-    if delivery and delivery.status == DeliveryStatus.PENDING:
+    if not delivery:
+        flash('التسليم غير موجود', 'danger')
+        return redirect(url_for('fleet.load_orders'))
+    if delivery.status == DeliveryStatus.PENDING:
         delivery.status = DeliveryStatus.RETURNED
         delivery.notes = request.form.get('notes', '')
         db.session.commit()
