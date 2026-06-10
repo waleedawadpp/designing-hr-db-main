@@ -33,10 +33,17 @@ def test_login_inactive_user(app, client):
         user.set_password('pass123')
         db.session.add(user)
         db.session.commit()
-    rv = client.post('/auth/login', data={
-        'username': 'inactive', 'password': 'pass123'
-    }, follow_redirects=True)
-    assert 'بيانات الدخول غير صحيحة' in rv.data.decode('utf-8')
+        branch_id = branch.id
+    try:
+        rv = client.post('/auth/login', data={
+            'username': 'inactive', 'password': 'pass123'
+        }, follow_redirects=True)
+        assert 'بيانات الدخول غير صحيحة' in rv.data.decode('utf-8')
+    finally:
+        with app.app_context():
+            db.session.query(User).filter_by(username='inactive').delete()
+            db.session.query(Branch).filter_by(id=branch_id).delete()
+            db.session.commit()
 
 
 def test_logout(client, logged_in_client):
