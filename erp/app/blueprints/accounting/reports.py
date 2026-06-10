@@ -61,6 +61,7 @@ def ledger():
                 .join(JournalEntry, JournalEntryLine.entry_id == JournalEntry.id)
                 .filter(
                     JournalEntryLine.account_id == account_id,
+                    JournalEntry.is_posted == True,
                     JournalEntry.date >= from_date,
                     JournalEntry.date <= to_date,
                 )
@@ -98,31 +99,15 @@ def _get_trial_balance_rows(from_date=None, to_date=None):
             func.coalesce(func.sum(JournalEntryLine.credit), 0).label('total_credit'),
         )
         .outerjoin(JournalEntryLine, JournalEntryLine.account_id == Account.id)
+        .outerjoin(JournalEntry, JournalEntry.id == JournalEntryLine.entry_id)
         .filter(Account.is_active == True)
     )
+    if from_date:
+        q = q.filter(db.or_(JournalEntry.date == None, JournalEntry.date >= from_date))
+    if to_date:
+        q = q.filter(db.or_(JournalEntry.date == None, JournalEntry.date <= to_date))
 
-    if from_date or to_date:
-        # Only join entries within the date range when filters are applied
-        q = (
-            db.session.query(
-                Account,
-                func.coalesce(func.sum(JournalEntryLine.debit), 0).label('total_debit'),
-                func.coalesce(func.sum(JournalEntryLine.credit), 0).label('total_credit'),
-            )
-            .outerjoin(JournalEntryLine, JournalEntryLine.account_id == Account.id)
-            .outerjoin(JournalEntry, JournalEntry.id == JournalEntryLine.entry_id)
-            .filter(Account.is_active == True)
-        )
-        if from_date:
-            q = q.filter(
-                db.or_(JournalEntry.date == None, JournalEntry.date >= from_date)
-            )
-        if to_date:
-            q = q.filter(
-                db.or_(JournalEntry.date == None, JournalEntry.date <= to_date)
-            )
-
-    rows = (
+    return (
         q.group_by(Account.id)
         .having(
             func.coalesce(func.sum(JournalEntryLine.debit), 0) +
@@ -131,7 +116,6 @@ def _get_trial_balance_rows(from_date=None, to_date=None):
         .order_by(Account.code)
         .all()
     )
-    return rows
 
 
 @accounting_bp.route('/reports/trial-balance')
@@ -193,6 +177,7 @@ def profit_loss():
                 Account.is_active == True,
                 Account.type == account_type,
                 db.or_(JournalEntry.date == None, db.and_(
+                    JournalEntry.is_posted == True,
                     JournalEntry.date >= from_date,
                     JournalEntry.date <= to_date,
                 )),
@@ -254,7 +239,10 @@ def balance_sheet():
             .filter(
                 Account.is_active == True,
                 Account.type == account_type,
-                db.or_(JournalEntry.date == None, JournalEntry.date <= as_of_date),
+                db.or_(JournalEntry.date == None, db.and_(
+                    JournalEntry.is_posted == True,
+                    JournalEntry.date <= as_of_date,
+                )),
             )
             .group_by(Account.id)
             .order_by(Account.code)
@@ -310,6 +298,7 @@ def vat_report():
             .join(JournalEntry, JournalEntry.id == JournalEntryLine.entry_id)
             .filter(
                 JournalEntryLine.account_id == acc.id,
+                JournalEntry.is_posted == True,
                 JournalEntry.date >= from_date,
                 JournalEntry.date <= to_date,
             )
@@ -366,7 +355,7 @@ def aging_report():
         outstanding = float(inv.grand_total or 0) - float(inv.amount_paid or 0)
         if outstanding <= 0:
             continue
-        inv_date = inv.date if isinstance(inv.date, datetime.date) else inv.date
+        inv_date = inv.date
         days_old = (today - inv_date).days
         row = {
             'invoice': inv,
@@ -484,10 +473,7 @@ def trial_balance_pdf():
         from weasyprint import HTML
     except ImportError:
         flash('مكتبة WeasyPrint غير مثبتة — لا يمكن تصدير PDF', 'warning')
-        from flask import make_response
-        resp = make_response(redirect(url_for('accounting.trial_balance')))
-        resp.status_code = 501
-        return resp
+        return redirect(url_for('accounting.trial_balance')), 501
 
     from_date, to_date = _parse_date_range()
     rows = _get_trial_balance_rows(from_date, to_date)
@@ -521,7 +507,12 @@ def trial_balance_pdf():
         to_date=to_date,
     )
 
-    pdf_bytes = HTML(string=html_content).write_pdf()
+    try:
+        pdf_bytes = HTML(string=html_content).write_pdf()
+    except Exception:
+        flash('حدث خطأ أثناء إنشاء PDF — تحقق من تثبيت WeasyPrint بشكل صحيح', 'danger')
+        return redirect(url_for('accounting.trial_balance'))
+
     output = BytesIO(pdf_bytes)
     output.seek(0)
 
