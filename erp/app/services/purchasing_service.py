@@ -57,44 +57,50 @@ def confirm_goods_receipt(receipt_id: int, created_by: int = None):
     if not receipt:
         raise ValueError('استلام البضاعة غير موجود')
 
-    for item in receipt.items:
-        batch = ProductBatch(
-            product_id=item.product_id,
-            warehouse_id=receipt.warehouse_id,
-            batch_no=item.batch_no or f'GR-{receipt.id}',
-            expiry_date=item.expiry_date,
-            qty_on_hand=item.qty_received,
-            unit_cost=item.unit_cost,
-            landed_cost=Decimal('0'),
-        )
-        db.session.add(batch)
-        db.session.flush()
-        item.batch_id = batch.id
+    # Idempotency guard (Fix 2)
+    if receipt.po.status == POStatus.RECEIVED:
+        return receipt
 
-        move = StockMovement(
-            product_id=item.product_id,
-            batch_id=batch.id,
-            warehouse_id=receipt.warehouse_id,
-            type='IN',
-            qty=item.qty_received,
-            reference=f'GR-{receipt.id}',
-            source='PURCHASE',
-            created_by=created_by,
-        )
-        db.session.add(move)
-
-    # Distribute landed cost from import costs
-    distribute_landed_cost(receipt)
-
-    # Generate journal entry
     try:
-        journal = create_purchase_journal_entry(receipt)
-        if journal is not None:
-            receipt.journal_id = journal.id
-    except Exception:
-        logger.exception('Failed to create journal for GR %s', receipt.id)
+        for item in receipt.items:
+            batch = ProductBatch(
+                product_id=item.product_id,
+                warehouse_id=receipt.warehouse_id,
+                batch_no=item.batch_no or f'GR-{receipt.id}',
+                expiry_date=item.expiry_date,
+                qty_on_hand=item.qty_received,
+                unit_cost=item.unit_cost,
+                landed_cost=Decimal('0'),
+            )
+            db.session.add(batch)
+            db.session.flush()
+            item.batch_id = batch.id
 
-    # Update PO status
-    receipt.po.status = POStatus.RECEIVED
-    db.session.commit()
+            move = StockMovement(
+                product_id=item.product_id,
+                batch_id=batch.id,
+                warehouse_id=receipt.warehouse_id,
+                type='IN',
+                qty=item.qty_received,
+                reference=f'GR-{receipt.id}',
+                source='PURCHASE',
+                created_by=created_by,
+            )
+            db.session.add(move)
+
+        distribute_landed_cost(receipt)
+
+        try:
+            journal = create_purchase_journal_entry(receipt)
+            if journal is not None:
+                receipt.journal_id = journal.id
+        except Exception:
+            logger.exception('Failed to create journal for GR %s', receipt.id)
+
+        receipt.po.status = POStatus.RECEIVED
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
     return receipt

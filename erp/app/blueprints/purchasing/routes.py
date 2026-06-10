@@ -67,7 +67,11 @@ def edit_supplier(id):
 @purchasing_bp.route('/orders/')
 @login_required
 def orders():
-    pos = PurchaseOrder.query.order_by(PurchaseOrder.date.desc()).all()
+    from sqlalchemy.orm import joinedload
+    pos = (PurchaseOrder.query
+           .options(joinedload(PurchaseOrder.supplier))
+           .order_by(PurchaseOrder.date.desc())
+           .all())
     return render_template('purchasing/orders/index.html', orders=pos)
 
 
@@ -244,6 +248,6 @@ def confirm_receipt(po_id, receipt_id):
     try:
         confirm_goods_receipt(receipt_id, created_by=current_user.id)
         flash('تم تأكيد الاستلام وتحديث المخزون', 'success')
-    except ValueError as e:
-        flash(str(e), 'danger')
+    except Exception as e:
+        flash(str(e) or 'حدث خطأ أثناء تأكيد الاستلام', 'danger')
     return redirect(url_for('purchasing.order_detail', id=po_id))
