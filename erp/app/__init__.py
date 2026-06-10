@@ -16,13 +16,8 @@ def create_app(config_name=None):
 
     _register_blueprints(app)
 
-    @app.cli.command('seed')
-    def seed_command():
-        """Seed the database with initial data."""
-        import sys, os
-        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        from seed import run_seed
-        run_seed(db, app)
+    from .cli import register_cli
+    register_cli(app)
 
     return app
 
