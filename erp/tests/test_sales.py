@@ -3,6 +3,32 @@ import pytest
 from datetime import date
 
 
+@pytest.fixture(autouse=True, scope='module')
+def clean_sales_tables(app):
+    from app.extensions import db
+    from app.models.sales import InvoiceItem, ReturnItem, SalesReturn, SalesInvoice, QuotationItem, Quotation
+    from app.models import Customer
+    with app.app_context():
+        ReturnItem.query.delete()
+        SalesReturn.query.delete()
+        InvoiceItem.query.delete()
+        QuotationItem.query.delete()
+        Quotation.query.delete()
+        SalesInvoice.query.delete()
+        Customer.query.delete()
+        db.session.commit()
+    yield
+    with app.app_context():
+        ReturnItem.query.delete()
+        SalesReturn.query.delete()
+        InvoiceItem.query.delete()
+        QuotationItem.query.delete()
+        Quotation.query.delete()
+        SalesInvoice.query.delete()
+        Customer.query.delete()
+        db.session.commit()
+
+
 @pytest.fixture(scope='function')
 def seed_sales_data(app):
     """Create a branch, warehouse, product, customer for sales tests."""
