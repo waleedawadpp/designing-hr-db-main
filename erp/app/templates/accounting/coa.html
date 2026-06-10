@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}شجرة الحسابات{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0"><i class="bi bi-diagram-3 me-2 text-primary"></i>شجرة الحسابات</h4>
+  <a href="{{ url_for('accounting.add_account') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-circle me-1"></i>إضافة حساب
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-2">
+    <div id="coa-tree">
+      {% macro render_account(acc, depth=0) %}
+      <div class="coa-node" data-id="{{ acc.id }}">
+        <div class="d-flex align-items-center py-1 px-2 border-bottom coa-row"
+             style="padding-right: {{ depth * 24 + 8 }}px !important;">
+          {% if not acc.is_leaf %}
+            <button class="btn btn-sm btn-link p-0 me-2 toggle-btn" type="button"
+                    onclick="toggleNode(this)" style="width:20px">
+              <i class="bi bi-chevron-down small"></i>
+            </button>
+          {% else %}
+            <span style="display:inline-block;width:28px"></span>
+          {% endif %}
+          <code class="text-secondary me-2 small">{{ acc.code }}</code>
+          <span class="flex-grow-1">{{ acc.name_ar }}</span>
+          <span class="badge ms-2
+            {% if acc.type == 'ASSET' %}bg-primary
+            {% elif acc.type == 'LIABILITY' %}bg-warning text-dark
+            {% elif acc.type == 'EQUITY' %}bg-success
+            {% elif acc.type == 'REVENUE' %}bg-info text-dark
+            {% else %}bg-danger{% endif %}">
+            {{ AccountType.LABELS.get(acc.type, acc.type) }}
+          </span>
+          <span class="badge bg-light text-dark ms-1 small">
+            {{ 'مدين' if acc.normal_balance == 'DEBIT' else 'دائن' }}
+          </span>
+          <a href="{{ url_for('accounting.edit_account', account_id=acc.id) }}"
+             class="btn btn-sm btn-link p-0 ms-2 text-secondary">
+            <i class="bi bi-pencil small"></i>
+          </a>
+        </div>
+        {% if not acc.is_leaf %}
+        <div class="children-container">
+          {% for child in acc.children.order_by() %}
+            {{ render_account(child, depth + 1) }}
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endmacro %}
+
+      {% for root in roots %}
+        {{ render_account(root) }}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleNode(btn) {
+  const node = btn.closest('.coa-node');
+  const container = node.querySelector(':scope > .children-container');
+  if (!container) return;
+  const icon = btn.querySelector('i');
+  const isHidden = container.style.display === 'none';
+  container.style.display = isHidden ? '' : 'none';
+  icon.className = isHidden ? 'bi bi-chevron-down small' : 'bi bi-chevron-left small';
+}
+</script>
+{% endblock %}
