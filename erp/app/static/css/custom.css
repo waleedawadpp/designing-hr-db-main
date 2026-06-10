@@ -1,0 +1,9 @@
+/* Base RTL overrides for Arabic ERP */
+body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f5f6fa; }
+.sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.sidebar .nav-link:hover { background: rgba(255,255,255,0.1); border-radius: 6px; }
+.sidebar .nav-link.active { background: rgba(255,255,255,0.2); border-radius: 6px; }
+.card { border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-radius: 10px; }
+.table th { font-weight: 600; background: #f8f9fa; }
+.badge { font-size: 0.8em; }
+@media (max-width: 768px) { .sidebar { min-width: 100% !important; } }
