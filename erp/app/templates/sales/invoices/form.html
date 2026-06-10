@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+{% block title %}فاتورة بيع جديدة{% endblock %}
+{% block extra_css %}
+<style>
+.line-row td { vertical-align: middle; }
+#grand-total-display { font-size: 1.4rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center mb-3 gap-2">
+  <a href="{{ url_for('sales.invoices') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-right"></i></a>
+  <h4 class="mb-0"><i class="bi bi-receipt me-2 text-primary"></i>إصدار فاتورة بيع</h4>
+</div>
+
+<form method="POST" id="invoice-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="lines_json" id="lines-json">
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">العميل <span class="text-danger">*</span></label>
+          <select name="customer_id" class="form-select" required>
+            <option value="">— اختر العميل —</option>
+            {% for c in customers %}
+            <option value="{{ c.id }}">{{ c.name }}{% if c.is_over_credit_limit() %} ⚠️{% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">نوع الفاتورة</label>
+          <select name="invoice_type" class="form-select">
+            <option value="CASH">نقدي</option>
+            <option value="CREDIT">آجل</option>
+            <option value="ADVANCE">دفعة مقدمة</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">التاريخ <span class="text-danger">*</span></label>
+          <input type="date" name="date" class="form-control" value="{{ today }}" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">تاريخ الاستحقاق</label>
+          <input type="date" name="due_date" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">ملاحظات</label>
+          <input type="text" name="notes" class="form-control" placeholder="اختياري">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span class="fw-semibold">أصناف الفاتورة</span>
+      <div class="d-flex gap-2">
+        <input type="text" id="product-search" class="form-control form-control-sm"
+               placeholder="بحث بالاسم أو الباركود..." style="width:250px">
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addEmptyLine()">
+          <i class="bi bi-plus-circle"></i> إضافة سطر
+        </button>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0" id="lines-table">
+        <thead class="table-light">
+          <tr>
+            <th style="width:30%">الصنف</th>
+            <th style="width:12%">الكمية</th>
+            <th style="width:13%">سعر الوحدة</th>
+            <th style="width:10%">خصم %</th>
+            <th style="width:10%">ضريبة %</th>
+            <th style="width:12%">الإجمالي</th>
+            <th style="width:5%"></th>
+          </tr>
+        </thead>
+        <tbody id="lines-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="row justify-content-end mb-3">
+    <div class="col-md-4">
+      <table class="table table-sm">
+        <tr><td class="text-muted">المجموع قبل الخصم</td>
+            <td class="text-end" id="disp-subtotal">0.000</td></tr>
+        <tr><td class="text-muted">إجمالي الخصم</td>
+            <td class="text-end text-danger" id="disp-discount">0.000</td></tr>
+        <tr><td class="text-muted">ضريبة القيمة المضافة (5%)</td>
+            <td class="text-end" id="disp-vat">0.000</td></tr>
+        <tr class="table-success">
+          <td class="fw-bold">الإجمالي النهائي</td>
+          <td class="text-end fw-bold" id="grand-total-display">0.000</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button type="submit" name="action" value="save_draft" class="btn btn-secondary">
+      <i class="bi bi-save me-1"></i>حفظ كمسودة
+    </button>
+    <button type="submit" name="action" value="confirm" class="btn btn-success">
+      <i class="bi bi-check-circle me-1"></i>تأكيد وخصم من المخزون
+    </button>
+    <a href="{{ url_for('sales.invoices') }}" class="btn btn-outline-secondary">إلغاء</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PRODUCTS = {{ products_json | safe }};
+let lineIdx = 0;
+
+function addEmptyLine(product) {
+  const tbody = document.getElementById('lines-body');
+  const idx = lineIdx++;
+  const optHtml = PRODUCTS.map(p =>
+    `<option value="${p.id}" data-price="${p.sale_price}" data-vat="${p.vat_rate}"
+     ${product && product.id == p.id ? 'selected' : ''}>${p.code} — ${p.name_ar}</option>`
+  ).join('');
+
+  const tr = document.createElement('tr');
+  tr.id = `line-${idx}`;
+  tr.className = 'line-row';
+  tr.innerHTML = `
+    <td>
+      <select class="form-select form-select-sm product-sel" onchange="onProductChange(${idx})">
+        <option value="">— اختر صنف —</option>${optHtml}
+      </select>
+    </td>
+    <td><input type="number" class="form-control form-control-sm qty" step="0.001" min="0.001"
+         value="1" oninput="calcLine(${idx})"></td>
+    <td><input type="number" class="form-control form-control-sm price" step="0.001" min="0"
+         value="${product ? product.sale_price : 0}" oninput="calcLine(${idx})"></td>
+    <td><input type="number" class="form-control form-control-sm disc" step="0.01" min="0" max="100"
+         value="0" oninput="calcLine(${idx})"></td>
+    <td><input type="number" class="form-control form-control-sm vat-inp" step="0.01" min="0"
+         value="${product ? product.vat_rate : 5}" oninput="calcLine(${idx})"></td>
+    <td class="text-end fw-bold line-total">0.000</td>
+    <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeLine(${idx})">
+      <i class="bi bi-trash"></i></button></td>
+  `;
+  tbody.appendChild(tr);
+  if (product) calcLine(idx);
+}
+
+function onProductChange(idx) {
+  const row = document.getElementById(`line-${idx}`);
+  const sel = row.querySelector('.product-sel');
+  const opt = sel.options[sel.selectedIndex];
+  if (opt.value) {
+    row.querySelector('.price').value = parseFloat(opt.dataset.price || 0).toFixed(3);
+    row.querySelector('.vat-inp').value = parseFloat(opt.dataset.vat || 5).toFixed(2);
+  }
+  calcLine(idx);
+}
+
+function calcLine(idx) {
+  const row = document.getElementById(`line-${idx}`);
+  if (!row) return;
+  const qty = parseFloat(row.querySelector('.qty').value) || 0;
+  const price = parseFloat(row.querySelector('.price').value) || 0;
+  const disc = parseFloat(row.querySelector('.disc').value) || 0;
+  const vat = parseFloat(row.querySelector('.vat-inp').value) || 0;
+  const base = qty * price;
+  const discAmt = base * disc / 100;
+  const afterDisc = base - discAmt;
+  const vatAmt = afterDisc * vat / 100;
+  const total = afterDisc + vatAmt;
+  row.querySelector('.line-total').textContent = total.toFixed(3);
+  recalcTotals();
+}
+
+function recalcTotals() {
+  let subtotal = 0, discTotal = 0, vatTotal = 0, grand = 0;
+  document.querySelectorAll('#lines-body .line-row').forEach(row => {
+    const qty = parseFloat(row.querySelector('.qty')?.value) || 0;
+    const price = parseFloat(row.querySelector('.price')?.value) || 0;
+    const disc = parseFloat(row.querySelector('.disc')?.value) || 0;
+    const vat = parseFloat(row.querySelector('.vat-inp')?.value) || 0;
+    const base = qty * price;
+    const d = base * disc / 100;
+    const after = base - d;
+    const v = after * vat / 100;
+    subtotal += base; discTotal += d; vatTotal += v; grand += after + v;
+  });
+  document.getElementById('disp-subtotal').textContent = subtotal.toFixed(3);
+  document.getElementById('disp-discount').textContent = discTotal.toFixed(3);
+  document.getElementById('disp-vat').textContent = vatTotal.toFixed(3);
+  document.getElementById('grand-total-display').textContent = grand.toFixed(3);
+}
+
+function removeLine(idx) {
+  document.getElementById(`line-${idx}`)?.remove();
+  recalcTotals();
+}
+
+function serializeLines() {
+  const lines = [];
+  document.querySelectorAll('#lines-body .line-row').forEach(row => {
+    const sel = row.querySelector('.product-sel');
+    if (sel?.value) {
+      lines.push({
+        product_id: sel.value,
+        qty: row.querySelector('.qty').value,
+        unit_price: row.querySelector('.price').value,
+        discount_pct: row.querySelector('.disc').value,
+        vat_rate: row.querySelector('.vat-inp').value,
+      });
+    }
+  });
+  document.getElementById('lines-json').value = JSON.stringify(lines);
+}
+
+// Barcode/name search
+document.getElementById('product-search').addEventListener('keyup', function(e) {
+  if (e.key !== 'Enter') return;
+  const q = this.value.trim().toLowerCase();
+  if (!q) return;
+  const match = PRODUCTS.find(p =>
+    p.name_ar.toLowerCase().includes(q) ||
+    p.code.toLowerCase().includes(q) ||
+    (p.barcode && p.barcode.includes(q))
+  );
+  if (match) { addEmptyLine(match); this.value = ''; }
+  else { this.classList.add('is-invalid'); setTimeout(() => this.classList.remove('is-invalid'), 1000); }
+});
+
+document.getElementById('invoice-form').addEventListener('submit', serializeLines);
+// Start with one empty line
+addEmptyLine();
+</script>
+{% endblock %}

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>فاتورة {{ invoice.invoice_no }}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, Tahoma, sans-serif; font-size: 13px; padding: 20px; color: #222; }
+    .header { text-align: center; border-bottom: 2px solid #2c6fad; padding-bottom: 12px; margin-bottom: 16px; }
+    .company-name { font-size: 22px; font-weight: bold; color: #2c6fad; }
+    .invoice-title { font-size: 16px; margin: 4px 0; }
+    .meta { display: flex; justify-content: space-between; margin-bottom: 16px; font-size: 12px; }
+    .meta-box { border: 1px solid #ddd; padding: 8px 12px; border-radius: 4px; min-width: 45%; }
+    .meta-box h6 { font-size: 11px; color: #888; margin-bottom: 4px; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+    th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; }
+    th { background: #f0f4f8; font-weight: bold; }
+    .totals { margin-right: auto; width: 300px; border: none; }
+    .totals td { border: none; padding: 3px 6px; }
+    .grand-total td { font-size: 15px; font-weight: bold; color: #1a7a3a; border-top: 2px solid #1a7a3a; }
+    .footer { text-align: center; margin-top: 24px; font-size: 11px; color: #888; border-top: 1px solid #eee; padding-top: 8px; }
+    @media print { .no-print { display: none !important; } }
+  </style>
+</head>
+<body>
+<div class="header">
+  <div class="company-name">{{ company_name }}</div>
+  <div class="invoice-title">فاتورة بيع — {{ invoice.type_label() }}</div>
+  <div>رقم الفاتورة: <strong>{{ invoice.invoice_no }}</strong> &nbsp;|&nbsp; التاريخ: {{ invoice.date }}</div>
+</div>
+
+<div class="meta">
+  <div class="meta-box">
+    <h6>بيانات العميل</h6>
+    <strong>{{ invoice.customer.name }}</strong><br>
+    {% if invoice.customer.phone %}هاتف: {{ invoice.customer.phone }}<br>{% endif %}
+    {% if invoice.customer.address %}{{ invoice.customer.address }}<br>{% endif %}
+    {% if invoice.customer.tax_no %}الرقم الضريبي: {{ invoice.customer.tax_no }}{% endif %}
+  </div>
+  <div class="meta-box">
+    <h6>بيانات الفاتورة</h6>
+    رقم الفاتورة: <strong>{{ invoice.invoice_no }}</strong><br>
+    النوع: {{ invoice.type_label() }}<br>
+    التاريخ: {{ invoice.date }}<br>
+    {% if invoice.due_date %}تاريخ الاستحقاق: {{ invoice.due_date }}{% endif %}
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr><th>#</th><th>الصنف</th><th>الوحدة</th><th>الكمية</th><th>سعر الوحدة</th><th>خصم %</th><th>ضريبة</th><th>الإجمالي</th></tr>
+  </thead>
+  <tbody>
+    {% for item in invoice.items %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td style="text-align:right">{{ item.product.name_ar }}</td>
+      <td>{{ item.product.unit }}</td>
+      <td>{{ item.qty }}</td>
+      <td>{{ "%.3f"|format(item.unit_price) }}</td>
+      <td>{{ item.discount_pct }}%</td>
+      <td>{{ "%.3f"|format(item.vat_amount) }}</td>
+      <td><strong>{{ "%.3f"|format(item.line_total) }}</strong></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<table class="totals">
+  <tr><td>المجموع الفرعي</td><td style="text-align:left">{{ "%.3f"|format(invoice.subtotal) }}</td></tr>
+  <tr><td>الخصم</td><td style="text-align:left;color:red">— {{ "%.3f"|format(invoice.discount_total) }}</td></tr>
+  <tr><td>ضريبة القيمة المضافة (5%)</td><td style="text-align:left">{{ "%.3f"|format(invoice.vat_total) }}</td></tr>
+  <tr class="grand-total"><td><strong>الإجمالي النهائي</strong></td><td style="text-align:left"><strong>{{ "%.3f"|format(invoice.grand_total) }}</strong></td></tr>
+</table>
+
+{% if invoice.notes %}
+<p style="margin-top:12px;font-size:12px;color:#555">ملاحظات: {{ invoice.notes }}</p>
+{% endif %}
+
+<div class="footer">شكراً لتعاملكم معنا — هذه الفاتورة وثيقة قانونية معتمدة</div>
+
+<div class="no-print" style="text-align:center;margin-top:20px">
+  <button onclick="window.print()" style="padding:8px 20px;font-size:14px">طباعة الفاتورة</button>
+</div>
+</body>
+</html>
