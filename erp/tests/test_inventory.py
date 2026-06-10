@@ -3,6 +3,33 @@ from datetime import date
 from decimal import Decimal
 
 
+@pytest.fixture(autouse=True, scope='module')
+def clean_inventory_tables(app):
+    """Clean inventory tables before and after the test module to prevent cross-test pollution."""
+    from app.models import (Product, ProductBatch, StockMovement,
+                             StockTransfer, StockTransferItem, Warehouse, Category)
+    from app.extensions import db
+    with app.app_context():
+        StockTransferItem.query.delete()
+        StockTransfer.query.delete()
+        StockMovement.query.delete()
+        ProductBatch.query.delete()
+        Product.query.delete()
+        Warehouse.query.delete()
+        Category.query.delete()
+        db.session.commit()
+    yield
+    with app.app_context():
+        StockTransferItem.query.delete()
+        StockTransfer.query.delete()
+        StockMovement.query.delete()
+        ProductBatch.query.delete()
+        Product.query.delete()
+        Warehouse.query.delete()
+        Category.query.delete()
+        db.session.commit()
+
+
 def test_product_list(logged_in_client):
     rv = logged_in_client.get('/inventory/products')
     assert rv.status_code == 200

@@ -41,6 +41,8 @@ class Product(db.Model):
     batches = db.relationship('ProductBatch', backref='product', lazy='dynamic')
 
     def total_qty(self):
+        # Warning: fires one DB query per call — do not use in loops over products.
+        # Use inventory_service.get_product_stock with a grouped subquery instead.
         from ..services.inventory_service import get_product_stock
         return get_product_stock(self.id)
 

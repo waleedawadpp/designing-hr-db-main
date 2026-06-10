@@ -208,7 +208,11 @@ def edit_warehouse(id):
 @inventory_bp.route('/movements/')
 @login_required
 def movements():
-    q = StockMovement.query.order_by(StockMovement.created_at.desc())
+    from sqlalchemy.orm import joinedload
+    q = (StockMovement.query
+         .options(joinedload(StockMovement.product),
+                  joinedload(StockMovement.warehouse))
+         .order_by(StockMovement.created_at.desc()))
     return render_template('inventory/movements/index.html', movements=q.limit(200).all())
 
 
