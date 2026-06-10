@@ -10,12 +10,16 @@ class Warehouse(db.Model):
     location = db.Column(db.String(255))
     is_active = db.Column(db.Boolean, default=True)
 
+    branch = db.relationship('Branch', foreign_keys=[branch_id])
+
 
 class Category(db.Model):
     __tablename__ = 'categories'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     parent_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
+
+    parent = db.relationship('Category', remote_side='[Category.id]', backref='children')
 
 
 class Product(db.Model):
@@ -35,6 +39,10 @@ class Product(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     batches = db.relationship('ProductBatch', backref='product', lazy='dynamic')
+
+    def total_qty(self):
+        from ..services.inventory_service import get_product_stock
+        return get_product_stock(self.id)
 
 
 class ProductBatch(db.Model):
@@ -64,6 +72,9 @@ class StockMovement(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    product = db.relationship('Product', foreign_keys=[product_id])
+    warehouse = db.relationship('Warehouse', foreign_keys=[warehouse_id])
+
 
 class StockTransfer(db.Model):
     __tablename__ = 'stock_transfers'
@@ -74,6 +85,13 @@ class StockTransfer(db.Model):
     status = db.Column(db.String(20), default='PENDING')
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
+    items = db.relationship('StockTransferItem', backref='transfer',
+                            lazy='dynamic', cascade='all, delete-orphan')
+    from_warehouse = db.relationship('Warehouse', foreign_keys=[from_warehouse_id],
+                                     backref='transfers_out')
+    to_warehouse = db.relationship('Warehouse', foreign_keys=[to_warehouse_id],
+                                   backref='transfers_in')
+
 
 class StockTransferItem(db.Model):
     __tablename__ = 'stock_transfer_items'
@@ -82,3 +100,6 @@ class StockTransferItem(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     batch_id = db.Column(db.Integer, db.ForeignKey('product_batches.id'), nullable=True)
     qty = db.Column(db.Numeric(15, 3), nullable=False)
+
+    product = db.relationship('Product')
+    batch = db.relationship('ProductBatch')
