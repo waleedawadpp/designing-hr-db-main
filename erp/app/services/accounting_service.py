@@ -7,9 +7,9 @@ def generate_ref_no(model_class, prefix: str, year: int = None) -> str:
     if year is None:
         year = date_type.today().year
     count = model_class.query.filter(
-        db.func.strftime('%Y', model_class.date) == str(year)
+        db.extract('year', model_class.date) == year
     ).count()
-    return f"{prefix}-{year}-{count + 1:05d}"
+    return f"{prefix}-{year}-{count:05d}"
 
 
 def create_manual_journal(date, description: str, lines: list,
@@ -48,3 +48,69 @@ def create_manual_journal(date, description: str, lines: list,
         )
         db.session.add(line)
     return entry
+
+
+def create_sales_journal_entry(invoice):
+    """
+    Auto-generate journal entry for a confirmed sales invoice.
+    CREDIT: المبيعات (4101), CREDIT: ضريبة مخرجات (2102)
+    DEBIT: ذمم عملاء (1103) for CREDIT invoices OR ح/الصندوق (1101) for CASH
+    DEBIT: تكلفة البضاعة المباعة (5101)
+    CREDIT: مخزون بضاعة (1104)
+    """
+    from ..models.accounting import Account, JournalEntry, JournalEntryLine
+
+    # Find standard accounts by code
+    def get_account(code):
+        return Account.query.filter_by(code=code).first()
+
+    sales_acc = get_account('4101')
+    vat_acc = get_account('2102')
+    cash_acc = get_account('1101')
+    receivable_acc = get_account('1103')
+    cogs_acc = get_account('5101')
+    inventory_acc = get_account('1104')
+
+    lines = []
+    grand_total = float(invoice.grand_total)
+    vat_total = float(invoice.vat_total)
+    net_sales = grand_total - vat_total
+
+    # Debit side: cash or receivable
+    debit_acc = receivable_acc if invoice.type == 'CREDIT' else cash_acc
+    if debit_acc:
+        lines.append({
+            'account_id': debit_acc.id,
+            'debit': grand_total,
+            'credit': 0,
+            'description': f'فاتورة {invoice.invoice_no}',
+        })
+
+    # Credit: sales
+    if sales_acc:
+        lines.append({
+            'account_id': sales_acc.id,
+            'debit': 0,
+            'credit': net_sales,
+            'description': f'مبيعات — {invoice.invoice_no}',
+        })
+
+    # Credit: VAT
+    if vat_acc and vat_total > 0:
+        lines.append({
+            'account_id': vat_acc.id,
+            'debit': 0,
+            'credit': vat_total,
+            'description': 'ضريبة القيمة المضافة',
+        })
+
+    if not lines or len(lines) < 2:
+        return None  # COA not seeded yet, skip
+
+    return create_manual_journal(
+        date=invoice.date,
+        description=f'فاتورة بيع رقم {invoice.invoice_no}',
+        lines=lines,
+        branch_id=invoice.branch_id,
+        created_by=invoice.created_by,
+    )
