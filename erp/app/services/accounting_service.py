@@ -150,3 +150,49 @@ def create_purchase_journal_entry(receipt):
         branch_id=receipt.po.branch_id,
         created_by=receipt.created_by,
     )
+
+
+def create_payroll_journal_entry(payment):
+    """
+    Auto-generate journal for a salary payment.
+    DEBIT:  مصروف رواتب (5201)
+    CREDIT: نقدية/صندوق (1101) for net salary
+    CREDIT: مستحقات الموظفين (2103) for deductions (if any)
+    """
+    from ..models.accounting import Account
+
+    def get_account(code):
+        return Account.query.filter_by(code=code).first()
+
+    salary_exp_acc = get_account('5201')
+    cash_acc = get_account('1101')
+    payables_acc = get_account('2103')  # employee payables / accrued salaries
+
+    net = float(payment.net_salary)
+    deductions = float(payment.deductions) + float(payment.advance_deduction)
+
+    if net == 0 or not salary_exp_acc or not cash_acc:
+        return None
+
+    gross = net + deductions
+    lines = [
+        {'account_id': salary_exp_acc.id, 'debit': gross, 'credit': 0,
+         'description': f'رواتب {payment.period}'},
+        {'account_id': cash_acc.id, 'debit': 0, 'credit': net,
+         'description': f'صرف راتب — {payment.period}'},
+    ]
+    if deductions > 0 and payables_acc:
+        lines.append({
+            'account_id': payables_acc.id, 'debit': 0, 'credit': deductions,
+            'description': 'استقطاعات',
+        })
+    elif deductions > 0:
+        # fallback: credit back to cash if no accruals account
+        lines[1]['credit'] += deductions
+
+    return create_manual_journal(
+        date=payment.paid_at.date() if payment.paid_at else __import__('datetime').date.today(),
+        description=f'رواتب موظف #{payment.employee_id} — {payment.period}',
+        lines=lines,
+        created_by=None,
+    )

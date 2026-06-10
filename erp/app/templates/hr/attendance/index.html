@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}الحضور والغياب{% endblock %}
+{% block content %}
+<h4>تسجيل الحضور — {{ today }}</h4>
+<form method="POST" action="{{ url_for('hr.record_attendance') }}" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="date" value="{{ today }}">
+  <table class="table table-bordered">
+    <thead class="table-light"><tr><th>الموظف</th><th>الحالة</th></tr></thead>
+    <tbody>
+    {% for emp in employees %}
+    {% set rec = records | selectattr('employee_id', 'equalto', emp.id) | first | default(None) %}
+    <tr>
+      <td>{{ emp.name }}<input type="hidden" name="employee_id[]" value="{{ emp.id }}"></td>
+      <td>
+        <select name="status[]" class="form-select form-select-sm">
+          <option value="PRESENT" {{ 'selected' if not rec or rec.status == 'PRESENT' }}>حاضر</option>
+          <option value="ABSENT" {{ 'selected' if rec and rec.status == 'ABSENT' }}>غائب</option>
+          <option value="LATE" {{ 'selected' if rec and rec.status == 'LATE' }}>متأخر</option>
+          <option value="HALF_DAY" {{ 'selected' if rec and rec.status == 'HALF_DAY' }}>نصف يوم</option>
+        </select>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <button class="btn btn-primary">حفظ الحضور</button>
+</form>
+{% endblock %}

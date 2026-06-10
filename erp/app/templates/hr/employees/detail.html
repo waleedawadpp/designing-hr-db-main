@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block title %}{{ emp.name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3">
+  <h4>{{ emp.name }}</h4>
+  <a href="{{ url_for('hr.edit_employee', id=emp.id) }}" class="btn btn-outline-secondary">تعديل</a>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><strong>القسم:</strong> {{ emp.dept.name if emp.dept else '—' }}</div>
+  <div class="col-md-3"><strong>الفرع:</strong> {{ emp.branch.name if emp.branch else '—' }}</div>
+  <div class="col-md-3"><strong>تاريخ التوظيف:</strong> {{ emp.hire_date or '—' }}</div>
+  <div class="col-md-3"><strong>الحالة:</strong> {{ emp.status_label() }}</div>
+</div>
+
+{% set contract = emp.active_contract() %}
+<div class="card mb-3">
+  <div class="card-header">العقد الحالي</div>
+  <div class="card-body">
+    {% if contract %}
+    <p>الراتب الأساسي: <strong>{{ contract.basic_salary }}</strong> | بدل سكن+مواصلات: {{ contract.total_allowances() }} | الإجمالي: {{ contract.gross_salary() }}</p>
+    {% else %}<p class="text-muted">لا يوجد عقد نشط</p>{% endif %}
+    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#contract-form">+ عقد جديد</button>
+    <div class="collapse mt-2" id="contract-form">
+      <form method="POST" action="{{ url_for('hr.new_contract', emp_id=emp.id) }}" novalidate>
+        {{ contract_form.hidden_tag() }}
+        <div class="row g-2">
+          <div class="col-md-2">{{ contract_form.type(class='form-select') }}</div>
+          <div class="col-md-2">{{ contract_form.start_date(class='form-control') }}</div>
+          <div class="col-md-2">{{ contract_form.basic_salary(class='form-control', placeholder='الراتب') }}</div>
+          <div class="col-md-2">{{ contract_form.housing_allowance(class='form-control', placeholder='سكن') }}</div>
+          <div class="col-md-2">{{ contract_form.transport_allowance(class='form-control', placeholder='مواصلات') }}</div>
+          <div class="col-md-2"><button class="btn btn-primary w-100">حفظ</button></div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">طلب إجازة</div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('hr.new_leave', emp_id=emp.id) }}" novalidate>
+          {{ leave_form.hidden_tag() }}
+          <div class="row g-2">
+            <div class="col-6">{{ leave_form.type(class='form-select') }}</div>
+            <div class="col-6">{{ leave_form.start_date(class='form-control') }}</div>
+            <div class="col-6">{{ leave_form.end_date(class='form-control') }}</div>
+            <div class="col-6"><button class="btn btn-outline-primary w-100">تقديم طلب</button></div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">سلفة</div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('hr.new_advance', emp_id=emp.id) }}" novalidate>
+          {{ advance_form.hidden_tag() }}
+          <div class="row g-2">
+            <div class="col-6">{{ advance_form.amount(class='form-control', placeholder='المبلغ') }}</div>
+            <div class="col-6">{{ advance_form.date(class='form-control') }}</div>
+            <div class="col-6">{{ advance_form.monthly_deduction(class='form-control', placeholder='الخصم الشهري') }}</div>
+            <div class="col-6"><button class="btn btn-outline-warning w-100">تسجيل سلفة</button></div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-3">
+  <div class="card-header">صرف الراتب</div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('hr.new_salary_payment', emp_id=emp.id) }}" class="row g-2" novalidate>
+      {{ salary_form.hidden_tag() }}
+      <div class="col-md-2">{{ salary_form.period(class='form-control', placeholder='2026-06') }}</div>
+      <div class="col-md-2">{{ salary_form.overtime(class='form-control', placeholder='أوفرتايم') }}</div>
+      <div class="col-md-2">{{ salary_form.extra_deductions(class='form-control', placeholder='استقطاعات') }}</div>
+      <div class="col-md-2"><button class="btn btn-success">صرف الراتب</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="card mt-3">
+  <div class="card-header">سجل الرواتب</div>
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0">
+      <thead><tr><th>الفترة</th><th>الأساسي</th><th>البدلات</th><th>الاستقطاعات</th><th>الصافي</th></tr></thead>
+      <tbody>
+      {% for p in emp.salary_payments.order_by('period').all() %}
+      <tr><td>{{ p.period }}</td><td>{{ p.basic }}</td><td>{{ p.allowances }}</td>
+          <td>{{ p.deductions }}</td><td><strong>{{ p.net_salary }}</strong></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

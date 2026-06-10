@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}الموظفون{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4>الموظفون</h4>
+  <a href="{{ url_for('hr.new_employee') }}" class="btn btn-primary">+ إضافة موظف</a>
+</div>
+<table class="table table-bordered table-hover">
+  <thead class="table-light">
+    <tr><th>#</th><th>الاسم</th><th>القسم</th><th>المسمى</th><th>الحالة</th><th></th></tr>
+  </thead>
+  <tbody>
+  {% for emp in employees %}
+  <tr>
+    <td>{{ emp.id }}</td>
+    <td>{{ emp.name }}</td>
+    <td>{{ emp.dept.name if emp.dept else '—' }}</td>
+    <td>{{ emp.position or '—' }}</td>
+    <td>
+      {% if emp.status == 'ACTIVE' %}<span class="badge bg-success">نشط</span>
+      {% elif emp.status == 'ON_LEAVE' %}<span class="badge bg-warning text-dark">في إجازة</span>
+      {% else %}<span class="badge bg-secondary">منهي الخدمة</span>{% endif %}
+    </td>
+    <td>
+      <a href="{{ url_for('hr.employee_detail', id=emp.id) }}" class="btn btn-sm btn-outline-primary">عرض</a>
+      <a href="{{ url_for('hr.edit_employee', id=emp.id) }}" class="btn btn-sm btn-outline-secondary">تعديل</a>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

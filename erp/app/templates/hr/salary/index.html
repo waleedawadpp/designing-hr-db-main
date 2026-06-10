@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}سجل الرواتب{% endblock %}
+{% block content %}
+<h4>سجل الرواتب</h4>
+<table class="table table-bordered table-hover">
+  <thead class="table-light">
+    <tr><th>الفترة</th><th>الموظف</th><th>الأساسي</th><th>البدلات</th><th>الاستقطاعات</th><th>الصافي</th></tr>
+  </thead>
+  <tbody>
+  {% for p in payments %}
+  <tr>
+    <td>{{ p.period }}</td>
+    <td>{{ p.employee.name if p.employee else '—' }}</td>
+    <td>{{ p.basic }}</td><td>{{ p.allowances }}</td>
+    <td>{{ p.deductions }}</td><td><strong>{{ p.net_salary }}</strong></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
