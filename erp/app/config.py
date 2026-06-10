@@ -15,6 +15,15 @@ class ProductionConfig(Config):
     DEBUG = False
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
 
+    @classmethod
+    def init_app(cls, app):
+        Config.init_app(app) if hasattr(Config, 'init_app') else None
+        if not cls.SQLALCHEMY_DATABASE_URI:
+            raise RuntimeError(
+                'DATABASE_URL environment variable is required in production. '
+                'Set it to your PostgreSQL or SQLite connection string.'
+            )
+
 class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'

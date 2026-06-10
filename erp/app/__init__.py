@@ -19,59 +19,37 @@ def create_app(config_name=None):
     @app.cli.command('seed')
     def seed_command():
         """Seed the database with initial data."""
+        import sys, os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         from seed import run_seed
         run_seed(db, app)
 
     return app
 
 def _register_blueprints(app):
-    try:
-        from .blueprints.auth import auth_bp
-        app.register_blueprint(auth_bp)
-    except ImportError:
-        pass
-    try:
-        from .blueprints.dashboard import dashboard_bp
-        app.register_blueprint(dashboard_bp)
-    except ImportError:
-        pass
-    try:
-        from .blueprints.branches import branches_bp
-        app.register_blueprint(branches_bp)
-    except ImportError:
-        pass
-    try:
-        from .blueprints.hr import hr_bp
-        app.register_blueprint(hr_bp)
-    except ImportError:
-        pass
-    try:
-        from .blueprints.accounting import accounting_bp
-        app.register_blueprint(accounting_bp)
-    except ImportError:
-        pass
-    try:
-        from .blueprints.inventory import inventory_bp
-        app.register_blueprint(inventory_bp)
-    except ImportError:
-        pass
-    try:
-        from .blueprints.purchasing import purchasing_bp
-        app.register_blueprint(purchasing_bp)
-    except ImportError:
-        pass
-    try:
-        from .blueprints.sales import sales_bp
-        app.register_blueprint(sales_bp)
-    except ImportError:
-        pass
-    try:
-        from .blueprints.fleet import fleet_bp
-        app.register_blueprint(fleet_bp)
-    except ImportError:
-        pass
-    try:
-        from .blueprints.reports import reports_bp
-        app.register_blueprint(reports_bp)
-    except ImportError:
-        pass
+    import logging
+    import importlib
+    logger = logging.getLogger(__name__)
+    blueprint_configs = [
+        ('app.blueprints.auth', 'auth_bp'),
+        ('app.blueprints.dashboard', 'dashboard_bp'),
+        ('app.blueprints.branches', 'branches_bp'),
+        ('app.blueprints.hr', 'hr_bp'),
+        ('app.blueprints.accounting', 'accounting_bp'),
+        ('app.blueprints.inventory', 'inventory_bp'),
+        ('app.blueprints.purchasing', 'purchasing_bp'),
+        ('app.blueprints.sales', 'sales_bp'),
+        ('app.blueprints.fleet', 'fleet_bp'),
+        ('app.blueprints.reports', 'reports_bp'),
+    ]
+    for module_path, bp_name in blueprint_configs:
+        try:
+            module = importlib.import_module(module_path)
+            bp = getattr(module, bp_name)
+            app.register_blueprint(bp)
+            logger.debug(f"Registered blueprint: {bp_name}")
+        except ImportError:
+            logger.debug(f"Blueprint not yet available: {module_path}")
+        except Exception as e:
+            logger.error(f"Failed to register blueprint {bp_name}: {e}")
+            raise
