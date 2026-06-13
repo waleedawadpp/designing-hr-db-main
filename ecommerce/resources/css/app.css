@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   Typography: Inter for LTR (English), Cairo for RTL (Arabic)
+--------------------------------------------------------------------------- */
+html {
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+html[dir='rtl'] {
+    font-family: 'Cairo', ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------------------------------------------------------------------------
+   RTL helpers — flip directional utilities where Tailwind's logical
+   properties are not enough.
+--------------------------------------------------------------------------- */
+html[dir='rtl'] .rtl\:flip {
+    transform: scaleX(-1);
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Hide scrollbar utility for carousels / horizontal scrollers */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Subtle reusable elevation */
+.card-shadow {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 10px 30px -12px rgba(0, 0, 0, 0.12);
+}
+
+/* Hide Alpine elements until initialized */
+[x-cloak] {
+    display: none !important;
+}
