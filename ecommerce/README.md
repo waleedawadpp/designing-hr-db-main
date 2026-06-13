@@ -1,59 +1,127 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Premium Store — Multilingual E-Commerce Platform
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A production-ready, **multilingual (Arabic / English, RTL & LTR)** e-commerce platform built
+on **Laravel 12**. It ships with a complete storefront, a role-based admin dashboard, PDF
+invoicing, email and WhatsApp notifications, a public read-only REST API, and full SEO and
+audit-logging support.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Multilingual storefront** — Arabic and English, with RTL/LTR layouts. All catalog content
+  is stored bilingually (`*_ar` / `*_en`) and resolved per request via localized model accessors.
+- **Product catalog** — categories with a self-referencing tree, products with galleries,
+  stock, sale pricing, featured flags, search, filtering and sorting.
+- **Cart & checkout** — session cart with coupons, save-for-later, tax & flat-rate shipping,
+  guest or authenticated checkout, rate-limited order submission and atomic stock decrement.
+- **PDF invoices** — generated per order (DomPDF) with QR code support and stored for re-download.
+- **Notifications** — order confirmation emails plus WhatsApp alerts to store and customer via
+  a pluggable driver (Meta Cloud / Twilio / Business API / log).
+- **Coupons** — percentage or fixed discounts with minimum-order, usage-limit and validity windows.
+- **Admin dashboard** — products, categories, coupons, banners, orders, settings; bulk product
+  actions; dashboard charts and metrics.
+- **Roles & permissions** — Super Admin, Admin, Content Manager, Customer via `spatie/laravel-permission`.
+- **SEO** — meta titles/descriptions, sitemap generation and SEO tooling.
+- **Activity logs** — audit trail of changes to products, categories and orders.
+- **Backups** — file + database backups via `spatie/laravel-backup`.
+- **Public REST API** — read-only v1 catalog API for headless/mobile clients.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Tech stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| Layer | Technology |
+|---|---|
+| Framework | Laravel 12 (PHP 8.3+) |
+| Auth scaffolding | Laravel Breeze |
+| Database | MySQL 8 (production) / SQLite (development) |
+| Front-end build | Vite + Tailwind CSS |
+| Queue / cache / sessions | Database driver (cron-driven on shared hosting) |
 
-## Learning Laravel
+### Key packages
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+From `composer.json` (`require`):
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Package | Purpose |
+|---|---|
+| `laravel/framework` | Core framework (^12.0) |
+| `laravel/tinker` | REPL |
+| `mcamara/laravel-localization` | URL & route localization (AR/EN) |
+| `spatie/laravel-permission` | Roles & permissions |
+| `spatie/laravel-activitylog` | Audit / activity logging |
+| `spatie/laravel-medialibrary` | Media associations & conversions |
+| `spatie/laravel-backup` | File + database backups |
+| `spatie/laravel-sitemap` | SEO sitemap generation |
+| `artesaos/seotools` | SEO meta tags |
+| `barryvdh/laravel-dompdf` | PDF invoice generation |
+| `intervention/image-laravel` | Image processing / WebP conversion |
+| `simplesoftwareio/simple-qrcode` | QR codes on invoices |
 
-## Laravel Sponsors
+## Quick start
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+See **[docs/INSTALLATION.md](docs/INSTALLATION.md)** for full details. Short version:
 
-### Premium Partners
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite        # default SQLite dev DB
+php artisan migrate --seed
+php artisan storage:link
+npm install && npm run build
+php artisan serve
+```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Open <http://localhost:8000>.
 
-## Contributing
+## Default credentials
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Seeded by `database/seeders/UserSeeder.php` — **all passwords are `password`**:
 
-## Code of Conduct
+| Email | Role | Access |
+|---|---|---|
+| `admin@example.com` | Super Admin | Everything |
+| `manager@example.com` | Admin | Products, categories, orders, settings, dashboard |
+| `customer@example.com` | Customer | Storefront only |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Demo coupons: **`WELCOME10`** (10% off) and **`SAVE50`** (50 off, min order 200).
 
-## Security Vulnerabilities
+> Change these credentials and review demo coupons before going to production.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Project structure
+
+```
+ecommerce/
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── Admin/      # admin dashboard controllers
+│   │   │   ├── Api/        # public v1 API controllers
+│   │   │   └── Frontend/   # storefront controllers
+│   │   └── Resources/      # API resource transformers
+│   ├── Models/             # User, Category, Product, Order, Coupon, Banner, Setting, ...
+│   ├── Repositories/       # ProductRepository, CategoryRepository, ...
+│   ├── Services/           # Cart, Coupon, Image, Invoice, Order, Setting
+│   │   └── WhatsApp/       # driver interface + Meta/Twilio/Business/Log drivers
+│   └── Providers/          # AppServiceProvider (WhatsApp driver binding, view composers)
+├── config/                 # shop.php, whatsapp.php, permission.php, backup.php, ...
+├── database/
+│   ├── migrations/         # schema (see docs/ER-DIAGRAM.md)
+│   └── seeders/            # roles, settings, users, catalog
+├── docs/                   # this documentation set
+├── lang/                   # ar / en translations
+├── resources/              # Blade views, JS, CSS (Tailwind + Vite)
+└── routes/                 # web.php, admin.php, api.php, auth.php
+```
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [docs/INSTALLATION.md](docs/INSTALLATION.md) | Local setup, requirements, seeded data |
+| [docs/ER-DIAGRAM.md](docs/ER-DIAGRAM.md) | Database schema, Mermaid ER diagram, table breakdown |
+| [docs/API.md](docs/API.md) | Public read-only v1 REST API reference |
+| [docs/WHATSAPP.md](docs/WHATSAPP.md) | WhatsApp driver architecture & configuration |
+| [docs/DEPLOYMENT-HOSTINGER.md](docs/DEPLOYMENT-HOSTINGER.md) | Hostinger shared-hosting deployment |
+| [docs/PRODUCTION.md](docs/PRODUCTION.md) | Backups, performance, monitoring, scaling |
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Released under the MIT License.
