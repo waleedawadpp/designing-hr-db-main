@@ -45,6 +45,11 @@ Route::controller(OrderTrackController::class)->prefix('orders')->name('orders.'
     Route::get('/{orderNumber}/invoice', 'invoice')->name('invoice');
 });
 
+// Customer dashboard (Breeze landing after login)
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
+
 // Authenticated profile (Breeze)
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
