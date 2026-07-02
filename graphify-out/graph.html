@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Knowledge Graph — designing-hr-db-main</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d0d1a;color:#e0e0e0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+#header{display:flex;align-items:center;gap:16px;padding:10px 20px;background:#12122a;border-bottom:1px solid #252550;flex-shrink:0;z-index:10}
+#header h1{font-size:16px;font-weight:600;color:#a78bfa;white-space:nowrap;letter-spacing:.03em}
+#stats{font-size:12px;color:#666}
+#search{margin-left:auto;padding:6px 12px;border:1px solid #2d2d60;border-radius:6px;background:#0d0d1a;color:#e0e0e0;font-size:13px;width:200px;outline:none;transition:border-color .2s}
+#search:focus{border-color:#a78bfa}
+#search::placeholder{color:#444}
+#main{display:flex;flex:1;overflow:hidden}
+#graph-container{flex:1;position:relative;overflow:hidden}
+svg#graph{width:100%;height:100%;cursor:grab}
+svg#graph:active{cursor:grabbing}
+#sidebar{width:270px;background:#12122a;border-left:1px solid #252550;padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;flex-shrink:0}
+h3.sec{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#555;margin-bottom:8px}
+.legend-item{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px;cursor:pointer;border-radius:4px;padding:2px 4px;transition:background .15s}
+.legend-item:hover{background:#1e1e40}
+.legend-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+#node-detail{min-height:80px}
+.nd-name{font-size:14px;font-weight:600;color:#fff;margin-bottom:4px;line-height:1.3}
+.nd-badge{font-size:10px;text-transform:uppercase;letter-spacing:.08em;padding:2px 7px;border-radius:3px;display:inline-block;margin-bottom:8px;color:#000;font-weight:700}
+.nd-desc{font-size:12px;color:#999;line-height:1.5}
+.nd-conns{margin-top:10px;font-size:11px;color:#666}
+.conn-tags{margin-top:5px;display:flex;flex-wrap:wrap;gap:4px}
+.ctag{background:#1e1e40;padding:2px 7px;border-radius:3px;font-size:10px;color:#aaa;cursor:pointer;transition:background .15s}
+.ctag:hover{background:#2e2e60}
+#instructions{font-size:11px;color:#555;line-height:1.7}
+.link{stroke-opacity:.35}
+.link-uses{stroke:#4a9eff}
+.link-contains{stroke:#7766cc}
+.link-fk{stroke:#ff6b6b}
+.link-implements{stroke:#ffd166}
+.link-belongs{stroke:#06d6a0}
+.link-extends{stroke:#ef476f}
+.link-other{stroke:#888}
+.node circle{stroke-width:1.5;cursor:pointer}
+.node.selected circle{stroke:#fff!important;stroke-width:3}
+.node.faded{opacity:.12}
+.link.faded{opacity:.05}
+.node text{font-size:10px;fill:#bbb;pointer-events:none;paint-order:stroke;stroke:#0d0d1a;stroke-width:3px;stroke-linejoin:round}
+.node.planned circle{stroke-dasharray:5,3}
+#tooltip{position:absolute;background:#1a1a3e;border:1px solid #3a3a70;padding:8px 11px;border-radius:7px;font-size:12px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:100;max-width:210px;line-height:1.4}
+#tooltip .tt-name{font-weight:700;font-size:13px;margin-bottom:3px}
+#tooltip .tt-type{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.06em}
+.reset-btn{background:#1e1e40;border:1px solid #303070;color:#aaa;padding:5px 10px;border-radius:5px;font-size:11px;cursor:pointer;transition:background .15s}
+.reset-btn:hover{background:#2a2a60}
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>⬡ Knowledge Graph</h1>
+  <span id="stats"></span>
+  <button class="reset-btn" id="resetBtn">Reset View</button>
+  <input id="search" type="text" placeholder="Search nodes…" autocomplete="off">
+</div>
+<div id="main">
+  <div id="graph-container">
+    <svg id="graph">
+      <defs>
+        <marker id="arrow-uses"      markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#4a9eff" opacity=".7"/></marker>
+        <marker id="arrow-contains"  markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#7766cc" opacity=".7"/></marker>
+        <marker id="arrow-fk"        markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ff6b6b" opacity=".7"/></marker>
+        <marker id="arrow-implements"markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ffd166" opacity=".7"/></marker>
+        <marker id="arrow-belongs"   markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#06d6a0" opacity=".7"/></marker>
+        <marker id="arrow-extends"   markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ef476f" opacity=".7"/></marker>
+        <marker id="arrow-other"     markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#888" opacity=".7"/></marker>
+      </defs>
+    </svg>
+    <div id="tooltip"></div>
+  </div>
+  <div id="sidebar">
+    <div>
+      <h3 class="sec">Node Types</h3>
+      <div id="legend"></div>
+    </div>
+    <div id="node-detail">
+      <h3 class="sec">Selected Node</h3>
+      <div style="font-size:12px;color:#444">Click a node to see details</div>
+    </div>
+    <div>
+      <h3 class="sec">Controls</h3>
+      <div id="instructions">Scroll to zoom · Drag canvas to pan<br>Drag node to reposition · Pin = double-click<br>Click node for details · Search to highlight</div>
+    </div>
+  </div>
+</div>
+<script>
+const NODE_TYPES = {
+  domain:     {color:"#e74c3c", size:28, label:"Domain"},
+  technology: {color:"#3498db", size:16, label:"Technology"},
+  table:      {color:"#1abc9c", size:12, label:"Table"},
+  module:     {color:"#9b59b6", size:20, label:"Module"},
+  concept:    {color:"#f39c12", size:18, label:"Concept"},
+  component:  {color:"#2ecc71", size:14, label:"Component"},
+  pattern:    {color:"#e67e22", size:15, label:"Pattern"}
+};
+
+const EDGE_CLASS = {
+  "uses":"uses","wraps":"uses","connects-to":"other","depends-on":"other",
+  "contains":"contains","FK→":"fk","FK→user":"fk","FK→vendor":"fk","FK→order":"fk",
+  "belongs-to":"belongs","tracks":"other","for-user":"fk","recommends":"other",
+  "implements":"implements","manifests-in":"implements","is-a":"other",
+  "evolved-from":"extends","owns":"contains","extends":"extends"
+};
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const nodes = [
+  {id:"D1",label:"Drinks Store App",type:"domain",description:"Cross-platform beverage e-commerce app (iOS/Android/Web) built with Expo + React Native. Direct-to-customer ordering via WhatsApp. No backend required."},
+  {id:"D2",label:"RAF Marketplace",type:"domain",description:"Multi-vendor marketplace for Oman/GCC. 45-table PostgreSQL DB, FastAPI backend, 44 REST endpoints, 71 pytest tests, full AI integration."},
+  {id:"D3",label:"HR Database",type:"domain",description:"Academic HR database design. 10-table star schema covering Employee lifecycle, org structure, and geographic hierarchy."},
+  {id:"D4",label:"ERP Flask System",type:"domain",status:"planned",description:"PLANNED: Full-stack ERP for import/distribution. 6 modules: HR, Accounting/GL, Inventory, Fleet, Sales, Purchasing. Flask + SQLAlchemy + Bootstrap RTL."},
+
+  {id:"T1", label:"Expo SDK 52",        type:"technology",description:"Framework for universal React apps. One codebase targeting iOS, Android, and Web."},
+  {id:"T2", label:"React Native 0.76",  type:"technology",description:"Native mobile UI framework powering the Drinks Store app."},
+  {id:"T3", label:"TypeScript 5.3",     type:"technology",description:"Static typing for JavaScript. Used across the Drinks Store frontend."},
+  {id:"T4", label:"NativeWind/Tailwind",type:"technology",description:"Tailwind CSS 3.4 adapted for React Native via NativeWind 4.1."},
+  {id:"T5", label:"PostgreSQL 16",      type:"technology",description:"Primary relational database for RAF. NUMERIC(14,3) for OMR currency, ENUM types, FK constraints."},
+  {id:"T6", label:"FastAPI",            type:"technology",description:"Python async web framework. 44 REST endpoints across 14 routers in the RAF backend."},
+  {id:"T7", label:"Python 3.11",        type:"technology",description:"Backend language for RAF Marketplace and planned ERP Flask system."},
+  {id:"T8", label:"SQLAlchemy 2.0",     type:"technology",description:"Python ORM for RAF backend. Declarative models, async sessions. Also planned for ERP."},
+  {id:"T9", label:"Alembic",            type:"technology",description:"Database migration tool for SQLAlchemy. 2 migrations in RAF (initial schema + reporting views)."},
+  {id:"T10",label:"Pydantic v2",        type:"technology",description:"Data validation for FastAPI request/response schemas."},
+  {id:"T11",label:"Flask",              type:"technology",description:"Lightweight Python web framework planned for the ERP system."},
+  {id:"T12",label:"pytest",             type:"technology",description:"Testing framework. 71 tests in RAF backend covering auth, orders, payments, AI, shipping, returns."},
+
+  {id:"H1", label:"Employee",       type:"table",domain:"HR",description:"Core HR entity: emp_id, emp_nm, email, hire_dt, edu_id (FK→Education)."},
+  {id:"H2", label:"Education",      type:"table",domain:"HR",description:"Education level lookup: edu_id, edu_level."},
+  {id:"H3", label:"Job",            type:"table",domain:"HR",description:"Job title lookup: job_id, job_title."},
+  {id:"H4", label:"Department",     type:"table",domain:"HR",description:"Department lookup: depart_id, depart_nm."},
+  {id:"H5", label:"Location",       type:"table",domain:"HR",description:"Top-level geographic entity: loc_id, loc_nm. Root of HR geo hierarchy."},
+  {id:"H6", label:"State",          type:"table",domain:"HR",description:"State within Location: state_id, state_nm, loc_id (FK→Location)."},
+  {id:"H7", label:"City",           type:"table",domain:"HR",description:"City within State: city_id, city_nm, state_id (FK→State)."},
+  {id:"H8", label:"Address (HR)",   type:"table",domain:"HR",description:"Address within City: addr_id, addr_nm, city_id (FK→City)."},
+  {id:"H9", label:"Salary",         type:"table",domain:"HR",description:"Salary lookup: salary_id, amount."},
+  {id:"H10",label:"EmployeeStatus", type:"table",domain:"HR",description:"Junction table: emp_id (FK), job_id (FK), manager_id, start_dt, end_dt, salary_id (FK). Classic many-to-many with metadata."},
+
+  {id:"RM1", label:"Identity & Auth",   type:"module",domain:"RAF",description:"7 tables: app_user, role, permission, role_permission, user_role, auth_session, activity_log. RBAC + 2FA + JWT."},
+  {id:"RM2", label:"Geography (RAF)",   type:"module",domain:"RAF",description:"4 tables: country, region, city, address. Full address hierarchy for Oman/GCC."},
+  {id:"RM3", label:"Vendors",           type:"module",domain:"RAF",description:"3 tables: vendor, vendor_staff, vendor_wallet. Apply/approval workflow, commission-based payouts."},
+  {id:"RM4", label:"Catalog",           type:"module",domain:"RAF",description:"9 tables: category, brand, product, attribute, attribute_value, product_variant, variant_attribute, product_image, inventory."},
+  {id:"RM5", label:"Cart & Engagement", type:"module",domain:"RAF",description:"4 tables: cart, cart_item, wishlist_item, review. Customer shopping and feedback."},
+  {id:"RM6", label:"Orders",            type:"module",domain:"RAF",description:"3 tables: customer_order, order_item, return_request. Full order lifecycle with status ENUM."},
+  {id:"RM7", label:"Payments",          type:"module",domain:"RAF",description:"4 tables: payment, refund, payout, wallet_transaction. Multi-gateway: Thawani, card, wallet, COD."},
+  {id:"RM8", label:"Shipping",          type:"module",domain:"RAF",description:"2 tables: shipment, shipment_event. Multi-carrier: Aramex, DHL, FedEx, local."},
+  {id:"RM9", label:"AI Layer",          type:"module",domain:"RAF",description:"5 tables: ai_job, ai_recommendation, ai_chat_session, ai_chat_message, ai_forecast."},
+  {id:"RM10",label:"Marketing",         type:"module",domain:"RAF",description:"2 tables: marketing_campaign, coupon. AI-generated campaigns, discount coupons."},
+  {id:"RM11",label:"Notifications",     type:"module",domain:"RAF",description:"2 tables: notification, device_token. Push, email, SMS channels."},
+
+  {id:"RT1",label:"app_user",         type:"table",domain:"RAF",description:"Central user entity. user_status ENUM, soft deletes (deleted_at), audit timestamps."},
+  {id:"RT2",label:"product",          type:"table",domain:"RAF",description:"Product catalog item. Bilingual name_ar/name_en, NUMERIC price, product_status ENUM."},
+  {id:"RT3",label:"customer_order",   type:"table",domain:"RAF",description:"Order record linking user→vendor. order_status ENUM tracks 7 lifecycle stages."},
+  {id:"RT4",label:"payment",          type:"table",domain:"RAF",description:"Payment record. payment_gateway ENUM (Thawani, card, wallet, COD)."},
+  {id:"RT5",label:"vendor",           type:"table",domain:"RAF",description:"Vendor entity. vendor_status ENUM (pending/approved/suspended), commission_rate NUMERIC."},
+  {id:"RT6",label:"inventory",        type:"table",domain:"RAF",description:"Stock per product variant: quantity_available, quantity_reserved, low_stock_threshold."},
+  {id:"RT7",label:"ai_recommendation",type:"table",domain:"RAF",description:"AI-generated recs: links user + product, confidence_score, model_version."},
+  {id:"RT8",label:"coupon",           type:"table",domain:"RAF",description:"Discount coupon. Percentage or fixed, per-vendor or platform-wide, max_usage_count."},
+
+  {id:"DS1",label:"CartContext",    type:"component",domain:"Drinks",description:"React Context providing cart state: items[], total, count. add/remove/update/clear ops. Persists via AsyncStorage."},
+  {id:"DS2",label:"ProductCard",   type:"component",domain:"Drinks",description:"UI card: product image, name, price + QtyStepper. Add-to-cart button."},
+  {id:"DS3",label:"PRODUCTS Data", type:"component",domain:"Drinks",description:"Static catalogue: 100+ drinks in 9 categories. Product + Category TypeScript types."},
+  {id:"DS4",label:"WhatsApp Flow", type:"component",domain:"Drinks",description:"buildOrderMessage() + buildWhatsAppUrl() + sendOrderToWhatsApp(). Cart → formatted WhatsApp message."},
+  {id:"DS5",label:"RTL Layout",    type:"component",domain:"Drinks",description:"Root layout: lang=ar, dir=rtl, Cairo Google Font. NativeWind RTL utilities."},
+
+  {id:"C1", label:"RBAC",               type:"concept",description:"Role-Based Access Control. 4 roles: customer, vendor_owner, vendor_staff, admin. Granular permission table."},
+  {id:"C2", label:"Bilingual AR/EN",    type:"concept",description:"Arabic-first multilingual. RAF: *_ar/*_en columns. Drinks: full RTL Arabic UI. ERP: Arabic accounting labels. Shared across 3 domains."},
+  {id:"C3", label:"Soft Deletes",       type:"concept",description:"Records marked deleted_at instead of physical deletion. Preserves audit history. RAF-wide pattern."},
+  {id:"C4", label:"Audit Trail",        type:"concept",description:"created_at + updated_at on every RAF table. activity_log table tracks user actions with IP, user agent, payload."},
+  {id:"C5", label:"Multi-vendor",       type:"concept",description:"Multiple independent vendors on one platform. Per-vendor catalogues, wallets, staff, commission rates, approval workflow."},
+  {id:"C6", label:"2FA / TOTP",         type:"concept",description:"TOTP-based two-factor authentication. pyotp library, QR code setup, enable/disable endpoints."},
+  {id:"C7", label:"AI Integration",     type:"concept",description:"5 AI capabilities: product generation, personalized recommendations, demand forecasting, chat assistant, image processing."},
+  {id:"C8", label:"WhatsApp Checkout",  type:"concept",description:"Stateless zero-backend order flow: cart → formatted message → vendor WhatsApp. Unique approach for local commerce."},
+  {id:"C9", label:"Cart Persistence",   type:"concept",description:"Cart state survives app restarts via AsyncStorage. Works on mobile (SQLite) and web (localStorage)."},
+  {id:"C10",label:"Geographic Hierarchy",type:"concept",description:"Location→State→City→Address (HR). Country→Region→City→Address (RAF). Same 4-level pattern, independently designed."},
+  {id:"C11",label:"Employee Lifecycle", type:"concept",description:"Hire date, job assignments via junction table, manager relationships, salary tracking. HR DB → ERP HR module lineage."},
+  {id:"C12",label:"Order Lifecycle",    type:"concept",description:"7-stage flow: cart→order→payment→shipment→delivery→(return)→(refund). Status ENUM at each stage."},
+
+  {id:"E1",label:"HR & Payroll",    type:"module",domain:"ERP",status:"planned",description:"PLANNED. Employee management, payroll calculation, salary advances. Extends HR Database concepts."},
+  {id:"E2",label:"Accounting / GL", type:"module",domain:"ERP",status:"planned",description:"PLANNED. Chart of Accounts (COA) with Arabic labels, journal entries, double-entry bookkeeping."},
+  {id:"E3",label:"Inventory Module",type:"module",domain:"ERP",status:"planned",description:"PLANNED. Stock movements, transfers, goods receipts, low-stock alerts, barcode scanning."},
+  {id:"E4",label:"Fleet Management",type:"module",domain:"ERP",status:"planned",description:"PLANNED. Vehicle master, route planning, load orders, delivery tracking, maintenance logs."},
+  {id:"E5",label:"Sales & Purchasing",type:"module",domain:"ERP",status:"planned",description:"PLANNED. Sales invoices, AR aging, purchase orders, goods receipts, Excel/PDF export."},
+
+  {id:"P1",label:"App Factory",  type:"pattern",description:"Flask/FastAPI app factory pattern. Configures from settings, registers routers/blueprints. Used in RAF; planned for ERP."},
+  {id:"P2",label:"Service Layer",type:"pattern",description:"Business logic in services/ directory (RAF: AI provider, vendor access, coupons, notifications). Keeps HTTP routers thin and testable."},
+  {id:"P3",label:"Context API",  type:"pattern",description:"React Context API for global state. CartProvider wraps app tree; useCart() hook for consumers."},
+  {id:"P4",label:"Junction Table",type:"pattern",description:"Many-to-many bridge with metadata. EmployeeStatus resolves Employee↔Job with dates + salary. Also role_permission, variant_attribute in RAF."}
+];
+
+const edges = [
+  {source:"T1",target:"T2",label:"wraps"},
+  {source:"T4",target:"T2",label:"extends"},
+  {source:"T8",target:"T5",label:"connects-to"},
+  {source:"T9",target:"T8",label:"depends-on"},
+  {source:"T6",target:"T10",label:"uses"},
+  {source:"D1",target:"T1",label:"uses"},{source:"D1",target:"T2",label:"uses"},
+  {source:"D1",target:"T3",label:"uses"},{source:"D1",target:"T4",label:"uses"},
+  {source:"D2",target:"T5",label:"uses"},{source:"D2",target:"T6",label:"uses"},
+  {source:"D2",target:"T7",label:"uses"},{source:"D2",target:"T8",label:"uses"},
+  {source:"D2",target:"T9",label:"uses"},{source:"D2",target:"T10",label:"uses"},
+  {source:"D2",target:"T12",label:"uses"},
+  {source:"D3",target:"T5",label:"uses"},
+  {source:"D4",target:"T7",label:"uses"},{source:"D4",target:"T8",label:"uses"},
+  {source:"D4",target:"T11",label:"uses"},
+  {source:"D2",target:"RM1",label:"contains"},{source:"D2",target:"RM2",label:"contains"},
+  {source:"D2",target:"RM3",label:"contains"},{source:"D2",target:"RM4",label:"contains"},
+  {source:"D2",target:"RM5",label:"contains"},{source:"D2",target:"RM6",label:"contains"},
+  {source:"D2",target:"RM7",label:"contains"},{source:"D2",target:"RM8",label:"contains"},
+  {source:"D2",target:"RM9",label:"contains"},{source:"D2",target:"RM10",label:"contains"},
+  {source:"D2",target:"RM11",label:"contains"},
+  {source:"D3",target:"H1",label:"contains"},{source:"D3",target:"H2",label:"contains"},
+  {source:"D3",target:"H3",label:"contains"},{source:"D3",target:"H4",label:"contains"},
+  {source:"D3",target:"H5",label:"contains"},{source:"D3",target:"H6",label:"contains"},
+  {source:"D3",target:"H7",label:"contains"},{source:"D3",target:"H8",label:"contains"},
+  {source:"D3",target:"H9",label:"contains"},{source:"D3",target:"H10",label:"contains"},
+  {source:"D4",target:"E1",label:"contains"},{source:"D4",target:"E2",label:"contains"},
+  {source:"D4",target:"E3",label:"contains"},{source:"D4",target:"E4",label:"contains"},
+  {source:"D4",target:"E5",label:"contains"},
+  {source:"D1",target:"DS1",label:"contains"},{source:"D1",target:"DS2",label:"contains"},
+  {source:"D1",target:"DS3",label:"contains"},{source:"D1",target:"DS4",label:"contains"},
+  {source:"D1",target:"DS5",label:"contains"},
+  {source:"H1",target:"H2",label:"FK→"},{source:"H10",target:"H1",label:"FK→"},
+  {source:"H10",target:"H3",label:"FK→"},{source:"H10",target:"H9",label:"FK→"},
+  {source:"H6",target:"H5",label:"FK→"},{source:"H7",target:"H6",label:"FK→"},
+  {source:"H8",target:"H7",label:"FK→"},
+  {source:"RT1",target:"RM1",label:"belongs-to"},{source:"RT2",target:"RM4",label:"belongs-to"},
+  {source:"RT3",target:"RM6",label:"belongs-to"},{source:"RT4",target:"RM7",label:"belongs-to"},
+  {source:"RT5",target:"RM3",label:"belongs-to"},{source:"RT6",target:"RM4",label:"belongs-to"},
+  {source:"RT7",target:"RM9",label:"belongs-to"},{source:"RT8",target:"RM10",label:"belongs-to"},
+  {source:"RT3",target:"RT1",label:"FK→user"},{source:"RT3",target:"RT5",label:"FK→vendor"},
+  {source:"RT4",target:"RT3",label:"FK→order"},{source:"RT6",target:"RT2",label:"tracks"},
+  {source:"RT7",target:"RT1",label:"for-user"},{source:"RT7",target:"RT2",label:"recommends"},
+  {source:"D2",target:"C1",label:"implements"},{source:"D2",target:"C2",label:"implements"},
+  {source:"D2",target:"C3",label:"implements"},{source:"D2",target:"C4",label:"implements"},
+  {source:"D2",target:"C5",label:"implements"},{source:"D2",target:"C6",label:"implements"},
+  {source:"D2",target:"C7",label:"implements"},{source:"D2",target:"C12",label:"implements"},
+  {source:"D1",target:"C2",label:"implements"},{source:"D1",target:"C8",label:"implements"},
+  {source:"D1",target:"C9",label:"implements"},
+  {source:"D3",target:"C10",label:"implements"},{source:"D3",target:"C11",label:"implements"},
+  {source:"D4",target:"C2",label:"implements"},{source:"D4",target:"C11",label:"implements"},
+  {source:"RM1",target:"C1",label:"implements"},{source:"RM1",target:"C6",label:"implements"},
+  {source:"RM9",target:"C7",label:"implements"},{source:"RM3",target:"C5",label:"implements"},
+  {source:"RM2",target:"C10",label:"implements"},{source:"RM6",target:"C12",label:"implements"},
+  {source:"C10",target:"H5",label:"manifests-in"},{source:"C10",target:"RM2",label:"manifests-in"},
+  {source:"C11",target:"H1",label:"manifests-in"},{source:"C11",target:"E1",label:"manifests-in"},
+  {source:"C12",target:"RT3",label:"manifests-in"},{source:"C8",target:"DS4",label:"manifests-in"},
+  {source:"D1",target:"P3",label:"uses"},{source:"D2",target:"P1",label:"uses"},
+  {source:"D2",target:"P2",label:"uses"},{source:"D3",target:"P4",label:"uses"},
+  {source:"D4",target:"P1",label:"uses"},
+  {source:"DS1",target:"P3",label:"implements"},{source:"H10",target:"P4",label:"is-a"},
+  {source:"DS4",target:"C8",label:"implements"},{source:"DS1",target:"C9",label:"implements"},
+  {source:"E1",target:"C11",label:"extends"},{source:"E1",target:"D3",label:"evolved-from"},
+  {source:"RM1",target:"RT1",label:"owns"},{source:"RM4",target:"RT2",label:"owns"},
+  {source:"RM6",target:"RT3",label:"owns"},{source:"RM7",target:"RT4",label:"owns"},
+  {source:"RM3",target:"RT5",label:"owns"}
+];
+
+// ── SETUP ─────────────────────────────────────────────────────────────────────
+const container = document.getElementById("graph-container");
+const W = container.clientWidth, H = container.clientHeight;
+
+document.getElementById("stats").textContent =
+  `${nodes.length} nodes · ${edges.length} edges`;
+
+// Legend
+const legendEl = document.getElementById("legend");
+Object.entries(NODE_TYPES).forEach(([type, cfg]) => {
+  const item = document.createElement("div");
+  item.className = "legend-item";
+  item.dataset.type = type;
+  item.innerHTML = `<div class="legend-dot" style="background:${cfg.color}"></div><span>${cfg.label}</span>`;
+  item.addEventListener("click", () => filterByType(type));
+  legendEl.appendChild(item);
+});
+
+// SVG & zoom
+const svg = d3.select("#graph");
+const g = svg.append("g");
+
+const zoom = d3.zoom().scaleExtent([0.08, 5]).on("zoom", ev => g.attr("transform", ev.transform));
+svg.call(zoom);
+
+document.getElementById("resetBtn").onclick = () =>
+  svg.transition().duration(600).call(zoom.transform, d3.zoomIdentity.translate(W/2, H/2).scale(0.65));
+
+// Build index
+const nodeById = new Map(nodes.map(n => [n.id, n]));
+
+// Links
+const link = g.append("g").attr("class","links")
+  .selectAll("line")
+  .data(edges)
+  .join("line")
+  .attr("class", d => {
+    const cls = EDGE_CLASS[d.label] || "other";
+    return `link link-${cls}`;
+  })
+  .attr("marker-end", d => {
+    const cls = EDGE_CLASS[d.label] || "other";
+    return `url(#arrow-${cls})`;
+  })
+  .attr("stroke-width", 1.4);
+
+// Nodes
+const nodeG = g.append("g").attr("class","nodes")
+  .selectAll("g")
+  .data(nodes)
+  .join("g")
+  .attr("class", d => "node" + (d.status === "planned" ? " planned" : ""))
+  .call(d3.drag()
+    .on("start", (ev, d) => { if(!ev.active) sim.alphaTarget(.3).restart(); d.fx=d.x; d.fy=d.y; })
+    .on("drag",  (ev, d) => { d.fx=ev.x; d.fy=ev.y; })
+    .on("end",   (ev, d) => { if(!ev.active) sim.alphaTarget(0); if(!d.pinned){d.fx=null;d.fy=null;} })
+  )
+  .on("mouseover", showTooltip)
+  .on("mousemove", moveTooltip)
+  .on("mouseout",  hideTooltip)
+  .on("click", selectNode)
+  .on("dblclick", (ev, d) => {
+    ev.stopPropagation();
+    d.pinned = !d.pinned;
+    if(d.pinned){ d.fx=d.x; d.fy=d.y; }
+    else { d.fx=null; d.fy=null; }
+    d3.select(ev.currentTarget).select("circle")
+      .attr("stroke", d.pinned ? "#fff" : d3.color(NODE_TYPES[d.type].color).darker(.6));
+  });
+
+nodeG.append("circle")
+  .attr("r", d => NODE_TYPES[d.type].size)
+  .attr("fill", d => NODE_TYPES[d.type].color)
+  .attr("stroke", d => d3.color(NODE_TYPES[d.type].color).darker(.6));
+
+nodeG.append("text")
+  .attr("dy", d => NODE_TYPES[d.type].size + 12)
+  .attr("text-anchor","middle")
+  .text(d => d.label);
+
+// Tooltip
+const tooltip = document.getElementById("tooltip");
+function showTooltip(ev, d) {
+  tooltip.innerHTML = `<div class="tt-name">${d.label}</div><div class="tt-type">${d.type}${d.domain ? " · "+d.domain : ""}</div>`;
+  tooltip.style.opacity = 1;
+}
+function moveTooltip(ev) {
+  const rect = container.getBoundingClientRect();
+  const x = ev.clientX - rect.left + 12, y = ev.clientY - rect.top - 10;
+  tooltip.style.left = x+"px";
+  tooltip.style.top  = y+"px";
+}
+function hideTooltip() { tooltip.style.opacity = 0; }
+
+// Selection
+let selected = null;
+const adjacentIds = new Map();
+nodes.forEach(n => adjacentIds.set(n.id, new Set()));
+edges.forEach(e => {
+  const s = typeof e.source === "object" ? e.source.id : e.source;
+  const t = typeof e.target === "object" ? e.target.id : e.target;
+  adjacentIds.get(s)?.add(t);
+  adjacentIds.get(t)?.add(s);
+});
+
+function selectNode(ev, d) {
+  ev.stopPropagation();
+  if(selected === d.id) { clearSelection(); return; }
+  selected = d.id;
+
+  const adj = adjacentIds.get(d.id) || new Set();
+  nodeG.classed("faded", n => n.id !== d.id && !adj.has(n.id));
+  nodeG.classed("selected", n => n.id === d.id);
+  link.classed("faded", e => {
+    const s = typeof e.source === "object" ? e.source.id : e.source;
+    const t = typeof e.target === "object" ? e.target.id : e.target;
+    return s !== d.id && t !== d.id;
+  });
+
+  // Detail panel
+  const neighbours = [...adj].map(id => nodeById.get(id)?.label).filter(Boolean);
+  const color = NODE_TYPES[d.type].color;
+  document.getElementById("node-detail").innerHTML = `
+    <h3 class="sec">Selected Node</h3>
+    <div class="nd-name">${d.label}</div>
+    <span class="nd-badge" style="background:${color}">${d.type.toUpperCase()}</span>
+    <div class="nd-desc">${d.description}</div>
+    ${neighbours.length ? `<div class="nd-conns">Connected (${neighbours.length}):</div>
+    <div class="conn-tags">${neighbours.map(n => `<span class="ctag">${n}</span>`).join("")}</div>` : ""}
+  `;
+}
+
+svg.on("click", clearSelection);
+function clearSelection() {
+  selected = null;
+  nodeG.classed("faded selected", false);
+  link.classed("faded", false);
+  document.getElementById("node-detail").innerHTML =
+    `<h3 class="sec">Selected Node</h3><div style="font-size:12px;color:#444">Click a node to see details</div>`;
+}
+
+// Search
+let activeTypeFilter = null;
+document.getElementById("search").addEventListener("input", function() {
+  const q = this.value.toLowerCase().trim();
+  if(!q) { nodeG.classed("faded",false); link.classed("faded",false); return; }
+  const matched = new Set(nodes.filter(n => n.label.toLowerCase().includes(q) || (n.description||"").toLowerCase().includes(q)).map(n=>n.id));
+  nodeG.classed("faded", n => !matched.has(n.id));
+  link.classed("faded", e => {
+    const s = typeof e.source === "object" ? e.source.id : e.source;
+    const t = typeof e.target === "object" ? e.target.id : e.target;
+    return !matched.has(s) && !matched.has(t);
+  });
+});
+
+function filterByType(type) {
+  if(activeTypeFilter === type) {
+    activeTypeFilter = null;
+    nodeG.classed("faded",false); link.classed("faded",false);
+    document.querySelectorAll(".legend-item").forEach(el=>el.style.opacity="");
+  } else {
+    activeTypeFilter = type;
+    nodeG.classed("faded", n => n.type !== type);
+    link.classed("faded", true);
+    document.querySelectorAll(".legend-item").forEach(el => {
+      el.style.opacity = el.dataset.type === type ? "1" : ".3";
+    });
+  }
+}
+
+// ── SIMULATION ────────────────────────────────────────────────────────────────
+const sim = d3.forceSimulation(nodes)
+  .force("link", d3.forceLink(edges).id(d=>d.id).distance(d => {
+    const lbl = d.label;
+    if(lbl==="contains" || lbl==="owns") return 100;
+    if(lbl==="belongs-to") return 80;
+    if(lbl==="uses") return 110;
+    return 90;
+  }).strength(0.4))
+  .force("charge", d3.forceManyBody().strength(d => {
+    if(d.type==="domain") return -900;
+    if(d.type==="module") return -400;
+    if(d.type==="concept") return -350;
+    return -200;
+  }))
+  .force("center", d3.forceCenter(W/2, H/2))
+  .force("collision", d3.forceCollide().radius(d => NODE_TYPES[d.type].size + 8))
+  .force("x", d3.forceX(W/2).strength(0.03))
+  .force("y", d3.forceY(H/2).strength(0.03))
+  .on("tick", () => {
+    link
+      .attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+      .attr("x2", d => {
+        const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y;
+        const dist = Math.sqrt(dx*dx+dy*dy) || 1;
+        const r = NODE_TYPES[d.target.type].size + 6;
+        return d.target.x - (dx/dist)*r;
+      })
+      .attr("y2", d => {
+        const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y;
+        const dist = Math.sqrt(dx*dx+dy*dy) || 1;
+        const r = NODE_TYPES[d.target.type].size + 6;
+        return d.target.y - (dy/dist)*r;
+      });
+    nodeG.attr("transform", d => `translate(${d.x},${d.y})`);
+  });
+
+// Initial zoom-to-fit after settle
+sim.on("end", () => {
+  svg.transition().duration(800)
+    .call(zoom.transform, d3.zoomIdentity.translate(W/2, H/2).scale(0.6));
+});
+</script>
+</body>
+</html>
