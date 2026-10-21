@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy: #13294b;
+  --navy2: #1f4e79;
+  --gold: #c9a227;
+  --cream: #fff7db;
+  --page: #eef2f7;
+  --line: #d5dce6;
+  --stripe: #f8fafc;
+}
+
+html, body {
+  background: var(--page);
+  color: #0f172a;
+  font-family: "Segoe UI", "Tajawal", "Cairo", Tahoma, sans-serif;
+}
+
+/* جداول النظام */
+.tbl { border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.tbl th, .tbl td { border-bottom: 1px solid var(--line); border-left: 1px solid var(--line); padding: 4px 8px; white-space: nowrap; }
+.tbl thead th { background: var(--navy); color: #fff; font-weight: 600; position: sticky; top: 0; z-index: 2; }
+.tbl thead th.th-total { background: var(--navy2); }
+.tbl thead th.th-red { background: #b91c1c; }
+.tbl thead th.th-green { background: #15803d; }
+.tbl thead th.th-gold { background: var(--gold); color: var(--navy); }
+.tbl tbody tr:nth-child(even) td { background-color: var(--stripe); }
+.tbl tbody tr:nth-child(odd) td { background-color: #fff; }
+.tbl td.calc, .tbl tbody tr td.calc { background: #eef2f7; color: #475569; }
+/* الأرقام تُحاذى لليسار؛ و plaintext يجعل "ر.ع. 1,234.567" يُعرض صحيحًا في RTL */
+.tbl td.num { text-align: left; unicode-bidi: plaintext; font-variant-numeric: tabular-nums; }
+.money { unicode-bidi: plaintext; text-align: right; }
+
+/* حقل يكتب فيه المستخدم */
+.inp { color: #0000ff; background: transparent; outline: none; width: 100%; }
+.inp:focus { background: #fff; box-shadow: inset 0 0 0 2px var(--gold); }
+.inp[readonly] { color: #475569; }
+
+/* رموز الحضور */
+.c-ح { background: #dcfce7 !important; color: #166534; }
+.c-غ { background: #fee2e2 !important; color: #b91c1c; }
+.c-إ { background: #dbeafe !important; color: #1d4ed8; }
+.c-م { background: #fef3c7 !important; color: #b45309; }
+.c-ن { background: #ede9fe !important; color: #6d28d9; }
+.c-out { background: #cbd5e1 !important; }
+.c-fri { background: #f8fafc !important; }
+
+.select-cream { background: var(--cream); border: 2px solid var(--gold); border-radius: 6px; padding: 4px 10px; color: #0000ff; font-weight: 600; }
+
+@media print {
+  @page { size: A4 landscape; margin: 8mm; }
+  .no-print { display: none !important; }
+  html, body { background: #fff; }
+  .print-full { overflow: visible !important; max-height: none !important; }
+  .tbl { font-size: 9px; }
+  .tbl th, .tbl td { padding: 2px 3px; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* الكشف الشهري: يتسع كاملًا في عرض A4 أفقي */
+  .fit-print { width: 100% !important; border: 0 !important; }
+  .fit-print table { width: 100%; table-layout: fixed; font-size: 6.5px; }
+  .fit-print th, .fit-print td { padding: 1px !important; white-space: normal !important; overflow: hidden; position: static !important; min-width: 0 !important; }
+  .fit-print .col-code { width: 34px; }
+  .fit-print .col-name { width: 84px; }
+  .fit-print .col-day { width: 12px; }
+  .fit-print .col-cnt { width: 17px; }
+  .fit-print .col-type { width: 30px; }
+  .fit-print .col-money { width: 38px; }
+  .fit-print .col-leave { width: 22px; }
+  .fit-print .wd { font-size: 5px; }
+}
