@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarCheck, Clock, FileSpreadsheet, FileText, History, LayoutDashboard, LogOut, MinusCircle, Users } from "lucide-react";
+import { CalendarCheck, Clock, FileSpreadsheet, FileText, History, LayoutDashboard, LogOut, MinusCircle, Upload, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const GROUPS = [
@@ -29,6 +29,7 @@ const GROUPS = [
     items: [
       { href: "/leave-form", label: "نموذج الإجازة", icon: FileText },
       { href: "/audit", label: "سجل التدقيق", icon: History },
+      { href: "/import", label: "استيراد من Excel", icon: Upload },
     ],
   },
 ];
