@@ -1,0 +1,134 @@
+// قاعدة بيانات نظام الحضور والرواتب
+// التواريخ تُخزَّن نصًا بصيغة YYYY-MM-DD والشهر بصيغة YYYY-MM لتفادي مشاكل المناطق الزمنية.
+// للنشر على PostgreSQL شغّل: npm run db:use-postgres (ينسخ هذا الملف ويغيّر المزوّد).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String // "admin" مدير | "viewer" مشاهد
+  createdAt    DateTime @default(now())
+  disabledAt   DateTime?
+}
+
+model Employee {
+  id                 String    @id @default(cuid())
+  code               String    @unique
+  name               String    @unique
+  type               String // "موظف" | "سائق يومي"
+  monthlySalary      Float?
+  dailyWage          Float?
+  dailyHours         Float     @default(9)
+  hireDate           String?
+  endDate            String?
+  leavesBeforeSystem Float?
+  notes              String?
+  sortOrder          Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  months     AttendanceMonth[]
+  extras     ExtraEntry[]
+  deductions DeductionEntry[]
+}
+
+model AttendanceMonth {
+  id         String    @id @default(cuid())
+  employeeId String
+  month      String // YYYY-MM
+  notes      String?
+  // 0 للسطر الأصلي. التطبيق لا ينشئ إلا 0، فالقيد الفريد يمنع التكرار؛
+  // ولا يأخذ قيمة أكبر إلا سطر مكرر جاء من الاستيراد (يُلوَّن بالأحمر).
+  dupSeq     Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  employee Employee        @relation(fields: [employeeId], references: [id])
+  days     AttendanceDay[]
+
+  @@unique([employeeId, month, dupSeq])
+  @@index([employeeId, month])
+  @@index([month])
+}
+
+model AttendanceDay {
+  id      String  @id @default(cuid())
+  monthId String
+  day     Int // 1..31
+  code    String? // ح غ ن إ م أو فارغ
+
+  monthRow AttendanceMonth @relation(fields: [monthId], references: [id])
+
+  @@unique([monthId, day])
+}
+
+model ExtraEntry {
+  id          String    @id @default(cuid())
+  date        String?
+  employeeId  String?
+  rawName     String? // الاسم كما ورد عند الاستيراد إن لم يُطابق موظفًا
+  item        String? // "ساعات إضافية" | "مكافأة"
+  actualTime  Float?
+  bonusAmount Float?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  employee Employee? @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId, date])
+  @@index([date])
+}
+
+model DeductionEntry {
+  id          String    @id @default(cuid())
+  date        String?
+  employeeId  String?
+  rawName     String?
+  item        String? // "تأخير" | "غرامة" | "سلفة" | "خصم آخر"
+  lateMinutes Float?
+  amount      Float?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  employee Employee? @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId, date])
+  @@index([date])
+}
+
+model Settings {
+  id                     Int @id @default(1)
+  systemStartYear        Int @default(2026)
+  weeklyOffDay           Int @default(5) // 0=الأحد … 5=الجمعة
+  annualLeaveEntitlement Int @default(30)
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  at        DateTime @default(now())
+  userEmail String
+  action    String // create | update | delete
+  entity    String
+  entityId  String
+  summary   String
+  before    String?
+  after     String?
+
+  @@index([at])
+  @@index([entity, entityId])
+}

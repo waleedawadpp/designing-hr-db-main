@@ -1,0 +1,26 @@
+# نسخة احتياطية يومية لقاعدة بيانات نظام الحضور والرواتب (PostgreSQL على Neon/Supabase)
+# يتطلب سرًّا في المستودع باسم HR_DATABASE_URL (رابط اتصال القاعدة).
+name: hr-payroll daily backup
+
+on:
+  schedule:
+    - cron: "17 23 * * *" # 03:17 بتوقيت مسقط
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: pg_dump
+        env:
+          DATABASE_URL: ${{ secrets.HR_DATABASE_URL }}
+        run: |
+          test -n "$DATABASE_URL" || { echo "HR_DATABASE_URL secret is missing"; exit 1; }
+          pg_dump --format=custom --no-owner --file="hr-$(date -u +%F).dump" "$DATABASE_URL"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hr-payroll-backup-${{ github.run_id }}
+          path: hr-*.dump
+          retention-days: 30
