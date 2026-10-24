@@ -100,6 +100,19 @@ npm run build && npm run test:e2e   # Playwright — المسار الكامل
    npx prisma generate            # للعودة إلى عميل SQLite محليًا
    ```
 
+## 5-ب) النشر على Hostinger (MySQL) — المستخدم حاليًا
+
+النظام منشور على **https://hr.anwaralhedh.com** (خطة Hostinger Business، تطبيق Node.js، وقاعدة MySQL على نفس الخادم).
+
+- **أمر البناء:** `npm run build:hostinger`. يولّد مخطط MySQL ثم يبني التطبيق.
+- **متغيرات البيئة** (من hPanel ← الموقع ← Node.js ← Environment variables):
+  - `DATABASE_URL` وبقية `DB_*`: أنشأتها Hostinger مع قاعدة البيانات.
+  - `AUTH_SECRET`: سر توقيع الجلسات.
+  - `BOOTSTRAP_ADMIN_EMAIL` و`BOOTSTRAP_ADMIN_PASSWORD` و`BOOTSTRAP_ADMIN_NAME`: لإنشاء أول مدير.
+- **عند أول تشغيل** (`src/instrumentation.ts`) ينشئ التطبيق الجداول إن كانت القاعدة فارغة، وينشئ المدير من متغيرات `BOOTSTRAP_*` إن لم يوجد أي مستخدم. لا يحتاج الخادم إلى prisma CLI.
+- **عند تغيير `prisma/schema.prisma`:** شغّل `npm run db:mysql` لتحديث `prisma/mysql/schema.prisma` و`src/lib/mysql-init.ts`. ملاحظة: الإنشاء التلقائي يعمل على قاعدة فارغة فقط، أما تعديل جداول قائمة فيحتاج ترحيلًا يدويًا.
+- **إعادة النشر:** ارفع أرشيف zip للمجلد `hr-payroll` (بدون `node_modules` و`.next`) إلى الموقع، ثم ابدأ بناء Node.js من الأرشيف بأمر البناء أعلاه. أو اربط GitHub من hPanel للنشر التلقائي.
+
 ## 6) النسخ الاحتياطي اليومي
 
 - `npm run backup`:
