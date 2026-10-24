@@ -17,7 +17,9 @@
     "backup": "tsx scripts/backup.ts",
     "screenshots": "tsx scripts/screenshots.ts",
     "vercel-build": "node scripts/use-postgres.mjs && prisma generate --schema prisma/postgres/schema.prisma && prisma db push --schema prisma/postgres/schema.prisma --skip-generate && next build",
-    "db:push:postgres": "node scripts/use-postgres.mjs && prisma db push --schema prisma/postgres/schema.prisma"
+    "db:push:postgres": "node scripts/use-postgres.mjs && prisma db push --schema prisma/postgres/schema.prisma",
+    "db:mysql": "node scripts/use-mysql.mjs",
+    "build:hostinger": "node scripts/use-mysql.mjs --schema-only && prisma generate --schema prisma/mysql/schema.prisma && next build"
   },
   "dependencies": {
     "@fontsource/tajawal": "^5.3.0",

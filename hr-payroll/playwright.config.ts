@@ -1,6 +1,8 @@
 import { defineConfig } from "@playwright/test";
 
 const PORT = 3100;
+// PLAYWRIGHT_BASE_URL: تشغيل الاختبارات على خادم قائم (مثل نسخة MySQL) بدل تشغيل خادم الاختبار
+const EXTERNAL = process.env.PLAYWRIGHT_BASE_URL;
 
 export default defineConfig({
   testDir: "tests/e2e",
@@ -9,14 +11,14 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"]],
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: EXTERNAL ?? `http://localhost:${PORT}`,
     locale: "ar",
     viewport: { width: 1600, height: 1000 },
     launchOptions: process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},
     trace: "retain-on-failure",
   },
   // قاعدة بيانات مستقلة للاختبار تُعاد تهيئتها في كل تشغيل (يتطلب npm run build مسبقًا)
-  webServer: {
+  webServer: EXTERNAL ? undefined : {
     command: `node scripts/e2e-server.mjs ${PORT}`,
     url: `http://localhost:${PORT}/login`,
     timeout: 120_000,
