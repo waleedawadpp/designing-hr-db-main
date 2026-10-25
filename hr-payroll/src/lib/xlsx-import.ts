@@ -181,7 +181,10 @@ export async function importWorkbook(db: PrismaClient, data: Uint8Array, opts: I
   const book = await loadBook(data);
   const tables = book.tables;
   for (const t of ["tblEmp", "tblGrid", "tblOT", "tblDed"]) {
-    if (!tables.has(t)) throw new Error(`الجدول ${t} غير موجود في الملف`);
+    if (!tables.has(t))
+      throw new Error(
+        `الجدول ${t} غير موجود في الملف. ارفع ملف الإكسل الكامل للنظام (فيه أوراق «بيانات الموظفين» و«إدخال الحضور» و«سجل الإضافي» و«سجل الخصم» بجداولها tblEmp و tblGrid و tblOT و tblDed) — لا قائمة أسماء فقط.`,
+      );
     out(`• ${t}: ورقة «${tables.get(t)!.sheet}» النطاق ${tables.get(t)!.ref}`);
   }
 
