@@ -7,5 +7,9 @@ export const MYSQL_MIGRATIONS: { id: string; sql: string }[] = [
   {
     "id": "0002_month_close_login_leave",
     "sql": "-- AlterTable\nALTER TABLE `Employee` ADD COLUMN `annualLeave` INTEGER NULL;\n\n-- CreateTable\nCREATE TABLE `MonthClose` (\n    `month` VARCHAR(191) NOT NULL,\n    `closedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),\n    `closedBy` VARCHAR(191) NOT NULL,\n    `snapshot` LONGTEXT NOT NULL,\n\n    PRIMARY KEY (`month`)\n) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\n\n-- CreateTable\nCREATE TABLE `LoginAttempt` (\n    `id` VARCHAR(191) NOT NULL,\n    `email` VARCHAR(191) NOT NULL,\n    `ok` BOOLEAN NOT NULL,\n    `at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),\n\n    INDEX `LoginAttempt_email_at_idx`(`email`, `at`),\n    PRIMARY KEY (`id`)\n) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\n\n"
+  },
+  {
+    "id": "0003_sayeq_yawmiya_to_driver",
+    "sql": "-- تعديل بيانات: «سايق يومية» (622013) مسجّل «موظف» براتب 0 — يصبح «سائق يومي» بأجرة يومية 15 (بطلب المستخدم)\n-- يطال هذا الموظف فقط، وفقط إن كان ما زال «موظف»\nUPDATE `Employee` SET `type` = 'سائق يومي', `dailyWage` = 15, `monthlySalary` = NULL, `updatedAt` = CURRENT_TIMESTAMP(3)\nWHERE `code` = '622013' AND `name` = 'سايق يومية' AND `type` = 'موظف';\n\nINSERT INTO `AuditLog` (`id`, `at`, `userEmail`, `action`, `entity`, `entityId`, `summary`)\nSELECT UUID(), CURRENT_TIMESTAMP(3), 'migration@system', 'update', 'Employee', `id`, 'تغيير نوع سايق يومية (622013) من موظف إلى سائق يومي بأجرة يومية 15'\nFROM `Employee` WHERE `code` = '622013' AND `name` = 'سايق يومية' AND `type` = 'سائق يومي' AND `dailyWage` = 15;\n"
   }
 ];
