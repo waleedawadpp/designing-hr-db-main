@@ -11,3 +11,4 @@ prisma/postgres
 next-env.d.ts
 *.tsbuildinfo
 deploy
+.mysql-next.prisma

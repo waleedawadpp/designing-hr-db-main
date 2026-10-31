@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/report";
-import { ARABIC_WEEKDAYS, formatDate, pad2, weekdayOf, yearLeaves, remainingLeave, format1 } from "@/lib/payroll";
+import { ARABIC_WEEKDAYS, formatDate, pad2, weekdayOf, yearLeaves, remainingLeave, leaveEntitlement, format1 } from "@/lib/payroll";
 import { LeaveControls } from "@/components/leave/leave-controls";
 import { PrintButton } from "@/components/leave/print-button";
 import { currentMonthKey } from "@/lib/utils";
@@ -42,9 +42,9 @@ export default async function LeaveFormPage({ searchParams }: { searchParams: Pr
         {emp && (
           <div className="mb-3 flex flex-wrap gap-4 text-sm">
             <span>الرقم الوظيفي: <b>{emp.code}</b></span>
-            <span>الرصيد السنوي: <b>{settings.annualLeaveEntitlement} يوم</b></span>
+            <span>الرصيد السنوي: <b>{leaveEntitlement(emp, settings)} يوم</b></span>
             <span>المسحوب في {year}: <b data-testid="leave-taken">{format1(taken)}</b>{year === settings.systemStartYear && emp.leavesBeforeSystem ? ` (منها ${emp.leavesBeforeSystem} قبل النظام)` : ""}</span>
-            <span>المتبقي: <b className={remainingLeave(taken, settings) < 0 ? "text-[#B91C1C]" : "text-[#166534]"}>{format1(remainingLeave(taken, settings))}</b></span>
+            <span>المتبقي: <b className={remainingLeave(taken, settings, emp) < 0 ? "text-[#B91C1C]" : "text-[#166534]"}>{format1(remainingLeave(taken, settings, emp))}</b></span>
           </div>
         )}
         <table className="tbl w-full" data-testid="leave-table">

@@ -30,11 +30,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     <div>
       <div className="mb-3 overflow-hidden rounded-lg border border-line shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-gold bg-navy px-4 py-3 text-white">
-          <h1 className="text-lg font-bold">لوحة تحكم الموظفين | شهر {formatMonth(ym)}</h1>
+          <h1 className="flex flex-wrap items-center gap-2 text-lg font-bold">
+            لوحة تحكم الموظفين | شهر {formatMonth(ym)}
+            {r.closed && <span className="rounded-full bg-[#DCFCE7] px-2 py-0.5 text-xs font-semibold text-[#166534]">🔒 معتمد</span>}
+          </h1>
           <div className="no-print flex gap-2"><ExportButtons table="dashboard" params={{ ym }} /></div>
         </div>
       </div>
-      <DashboardClient ym={ym} rows={rows} presentPerDay={r.presentPerDay} extrasCount={r.extrasCount} />
+      <DashboardClient ym={ym} rows={rows} presentPerDay={r.presentPerDay} extrasCount={r.extrasCount} closed={!!r.closed} />
     </div>
   );
 }

@@ -33,6 +33,7 @@ model Employee {
   hireDate           String?
   endDate            String?
   leavesBeforeSystem Float?
+  annualLeave        Int? // رصيد إجازة سنوي خاص بالموظف (فارغ = رصيد الإعدادات)
   notes              String? @db.Text
   sortOrder          Int       @default(0)
   createdAt          DateTime  @default(now())
@@ -132,4 +133,22 @@ model AuditLog {
 
   @@index([at])
   @@index([entity, entityId])
+}
+
+// شهر معتمد (مقفل): تُحفظ نتيجة الكشف كما هي وقت الاعتماد، ولا تُعدَّل بياناته حتى يُعاد فتحه
+model MonthClose {
+  month    String   @id // YYYY-MM
+  closedAt DateTime @default(now())
+  closedBy String
+  snapshot String @db.LongText // JSON لصفوف الكشف وقت الاعتماد
+}
+
+// محاولات الدخول (لإيقاف التخمين مؤقتًا بعد عدة محاولات خاطئة)
+model LoginAttempt {
+  id    String   @id @default(cuid())
+  email String
+  ok    Boolean
+  at    DateTime @default(now())
+
+  @@index([email, at])
 }

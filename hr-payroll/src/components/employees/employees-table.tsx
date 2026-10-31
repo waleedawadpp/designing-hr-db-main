@@ -13,14 +13,14 @@ const blank = (): Row => ({
   id: null,
   key: `new-${Math.random().toString(36).slice(2)}`,
   code: "", name: "", type: "", monthlySalary: "", dailyWage: "", dailyHours: "9",
-  hireDate: null, endDate: null, leavesBeforeSystem: "", notes: "",
+  hireDate: null, endDate: null, leavesBeforeSystem: "", annualLeave: "", notes: "",
 });
 
 function isBlank(r: Row) {
-  return !r.code && !r.name && !r.type && !r.monthlySalary && !r.dailyWage && !r.hireDate && !r.endDate && !r.leavesBeforeSystem && !r.notes;
+  return !r.code && !r.name && !r.type && !r.monthlySalary && !r.dailyWage && !r.hireDate && !r.endDate && !r.leavesBeforeSystem && !r.annualLeave && !r.notes;
 }
 
-export function EmployeesTable({ rows: initial, canEdit, today }: { rows: (EmployeeInput & { id: string })[]; canEdit: boolean; today: string }) {
+export function EmployeesTable({ rows: initial, canEdit, today, defaultLeave }: { rows: (EmployeeInput & { id: string })[]; canEdit: boolean; today: string; defaultLeave: number }) {
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>(() => [...initial.map((r) => ({ ...r, key: r.id })), ...(canEdit ? [blank()] : [])]);
   const [errors, setErrors] = useState<Record<string, Errors>>({});
@@ -65,7 +65,7 @@ export function EmployeesTable({ rows: initial, canEdit, today }: { rows: (Emplo
     router.refresh();
   }
 
-  const cell = (r: Row, f: keyof EmployeeInput, opts: { num?: boolean; width?: string; disabled?: boolean } = {}) => {
+  const cell = (r: Row, f: keyof EmployeeInput, opts: { num?: boolean; width?: string; disabled?: boolean; placeholder?: string } = {}) => {
     const err = errors[r.key]?.[f];
     return (
       <td className={cn("!py-0", opts.width, err && "!bg-[#FEE2E2]", opts.disabled && "calc")} title={err}>
@@ -75,6 +75,7 @@ export function EmployeesTable({ rows: initial, canEdit, today }: { rows: (Emplo
           dir={opts.num ? "ltr" : undefined}
           inputMode={opts.num ? "decimal" : undefined}
           value={r[f] as string}
+          placeholder={opts.placeholder}
           readOnly={!canEdit || opts.disabled}
           onChange={(e) => update(r.key, { [f]: e.target.value } as Partial<Row>)}
           onBlur={() => persist(rows.find((x) => x.key === r.key)!)}
@@ -92,7 +93,7 @@ export function EmployeesTable({ rows: initial, canEdit, today }: { rows: (Emplo
           <thead>
             <tr>
               <th>الرقم</th><th>الاسم</th><th>النوع</th><th>الراتب الشهري</th><th>الأجرة اليومية</th><th>ساعات الدوام اليومي</th>
-              <th>تاريخ التعيين</th><th>تاريخ انتهاء الخدمة</th><th>إجازات مسحوبة قبل النظام</th><th className="th-total">الحالة</th><th>ملاحظات</th>
+              <th>تاريخ التعيين</th><th>تاريخ انتهاء الخدمة</th><th>إجازات مسحوبة قبل النظام</th><th>رصيد الإجازة السنوي</th><th className="th-total">الحالة</th><th>ملاحظات</th>
             </tr>
           </thead>
           <tbody>
@@ -128,6 +129,7 @@ export function EmployeesTable({ rows: initial, canEdit, today }: { rows: (Emplo
                     {err.endDate && <div className="text-[11px] text-[#B91C1C]">{err.endDate}</div>}
                   </td>
                   {cell(r, "leavesBeforeSystem", { num: true, width: "min-w-[80px]" })}
+                  {cell(r, "annualLeave", { num: true, width: "min-w-[80px]", placeholder: `${defaultLeave} (الافتراضي)` })}
                   <td className={cn("calc", r.id && employeeStatus(r, today) === "انتهت الخدمة" && "!text-[#B91C1C]")}>
                     {r.name ? employeeStatus(r, today) : ""}
                   </td>

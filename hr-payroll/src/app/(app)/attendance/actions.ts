@@ -5,9 +5,21 @@ import { requireAdmin } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { INVALID_CODE_MESSAGE, isValidCode, isWorkingInMonth, monthBounds, nextMonthKey, pad2, weekdayOf, activeDays } from "@/lib/payroll";
 import { getSettings } from "@/lib/report";
+import { assertMonthsOpen, MonthClosedError } from "@/lib/month-close";
 import { currentMonthKey } from "@/lib/utils";
 
 type Result = { ok: true } | { ok: false; error: string };
+
+/** رسالة الخطأ إن كان الشهر معتمدًا، وإلا null. */
+async function closedError(...months: (string | null | undefined)[]): Promise<string | null> {
+  try {
+    await assertMonthsOpen(prisma, ...months);
+    return null;
+  } catch (e) {
+    if (e instanceof MonthClosedError) return e.message;
+    throw e;
+  }
+}
 
 async function setCode(monthId: string, day: number, code: string | null, user: { email: string }) {
   const existing = await prisma.attendanceDay.findUnique({ where: { monthId_day: { monthId, day } } });
@@ -26,6 +38,8 @@ export async function setDayCode(monthId: string, day: number, code: string | nu
   if (code !== null && !isValidCode(code)) return { ok: false, error: INVALID_CODE_MESSAGE };
   const row = await prisma.attendanceMonth.findUnique({ where: { id: monthId } });
   if (!row || row.deletedAt) return { ok: false, error: "السطر غير موجود" };
+  const locked = await closedError(row.month);
+  if (locked) return { ok: false, error: locked };
   const { days } = monthBounds(row.month);
   if (!Number.isInteger(day) || day < 1 || day > days) return { ok: false, error: "هذا اليوم خارج الشهر" };
   await setCode(monthId, day, code, user);
@@ -37,6 +51,8 @@ export async function setMonthNotes(monthId: string, notes: string): Promise<Res
   const user = await requireAdmin();
   const before = await prisma.attendanceMonth.findUnique({ where: { id: monthId } });
   if (!before) return { ok: false, error: "السطر غير موجود" };
+  const locked = await closedError(before.month);
+  if (locked) return { ok: false, error: locked };
   const value = notes.trim() || null;
   if (before.notes === value) return { ok: true };
   await prisma.attendanceMonth.update({ where: { id: monthId }, data: { notes: value } });
@@ -53,6 +69,8 @@ export async function getNextMonth(): Promise<string> {
 export async function addNextMonth(): Promise<{ ok: true; month: string; created: number } | { ok: false; error: string }> {
   const user = await requireAdmin();
   const month = await getNextMonth();
+  const locked = await closedError(month);
+  if (locked) return { ok: false, error: locked };
   const employees = await prisma.employee.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] });
   const existing = new Set(
     (await prisma.attendanceMonth.findMany({ where: { month, deletedAt: null }, select: { employeeId: true } })).map((r) => r.employeeId),
@@ -75,6 +93,8 @@ function inActiveRange(e: { hireDate: string | null; endDate: string | null }, d
 /** تعبئة "ح" لكل الأسطر في يوم محدد (الخانات الفارغة فقط، وضمن مدة خدمة الموظف). */
 export async function fillDayPresent(month: string, day: number): Promise<Result & { changed?: number }> {
   const user = await requireAdmin();
+  const locked = await closedError(month);
+  if (locked) return { ok: false, error: locked };
   const { days } = monthBounds(month);
   if (day < 1 || day > days) return { ok: false, error: "هذا اليوم خارج الشهر" };
   const date = `${month}-${pad2(day)}`;
@@ -94,6 +114,8 @@ export async function fillEmployeePresent(monthId: string): Promise<Result & { c
   const user = await requireAdmin();
   const r = await prisma.attendanceMonth.findUnique({ where: { id: monthId }, include: { employee: true, days: true } });
   if (!r) return { ok: false, error: "السطر غير موجود" };
+  const locked = await closedError(r.month);
+  if (locked) return { ok: false, error: locked };
   const settings = await getSettings(prisma);
   const { days } = monthBounds(r.month);
   if (activeDays(r.employee, r.month) === 0) return { ok: true, changed: 0 };
