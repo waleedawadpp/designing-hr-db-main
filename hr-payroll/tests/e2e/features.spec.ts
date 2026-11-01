@@ -153,3 +153,48 @@ test("النسخة الاحتياطية للمدير فقط والإعدادات
   expect(r2.status()).toBe(401);
   await anon.close();
 });
+
+test("نموذج إضافة موظف جديد وتعديل موظف قائم", async ({ page }) => {
+  await login(page);
+  await page.goto("/employees");
+
+  // إضافة: التحقق من الحقول الإلزامية ثم الحفظ
+  await page.getByRole("button", { name: "إضافة موظف" }).click();
+  const dlg = page.getByTestId("employee-dialog");
+  await dlg.getByRole("button", { name: "إضافة الموظف" }).click();
+  await expect(dlg.getByText("الرقم مطلوب")).toBeVisible();
+  await expect(dlg.getByRole("alert").filter({ hasText: "اختر النوع" })).toBeVisible();
+  await dlg.getByLabel("الرقم").fill("699100");
+  await dlg.getByLabel("الاسم").fill("موظف من النموذج");
+  await dlg.getByLabel("النوع").selectOption("سائق يومي");
+  await dlg.getByRole("button", { name: "إضافة الموظف" }).click();
+  await expect(dlg.getByText("الأجرة اليومية مطلوبة للسائق")).toBeVisible();
+  await dlg.getByLabel("الأجرة اليومية").fill("12");
+  await dlg.getByRole("button", { name: "إضافة الموظف" }).click();
+  await expect(dlg).toHaveCount(0);
+  await expect(page.getByText("✔ تم الحفظ — موظف من النموذج")).toBeVisible();
+  const row = page.getByTestId("emp-699100");
+  await expect(row.getByLabel("dailyWage")).toHaveValue("12");
+
+  // تعديل: يفتح ببيانات الموظف ويحفظ التغيير
+  await row.getByRole("button", { name: "تعديل موظف من النموذج" }).click();
+  await expect(dlg.getByLabel("الاسم")).toHaveValue("موظف من النموذج");
+  await dlg.getByLabel("الأجرة اليومية").fill("14");
+  await dlg.getByLabel("ملاحظات").fill("عُدّل من النموذج");
+  await dlg.getByRole("button", { name: "حفظ التعديلات" }).click();
+  await expect(dlg).toHaveCount(0);
+  await expect(row.getByLabel("dailyWage")).toHaveValue("14");
+
+  // يبقى بعد إعادة التحميل، والرقم المكرر مرفوض
+  await page.reload();
+  await expect(page.getByTestId("emp-699100").getByLabel("notes")).toHaveValue("عُدّل من النموذج");
+  await page.getByRole("button", { name: "إضافة موظف" }).click();
+  await dlg.getByLabel("الرقم").fill("699100");
+  await dlg.getByLabel("الاسم").fill("اسم آخر");
+  await dlg.getByLabel("النوع").selectOption("موظف");
+  await dlg.getByLabel("الراتب الشهري").fill("200");
+  await dlg.getByRole("button", { name: "إضافة الموظف" }).click();
+  await expect(dlg.getByText("الرقم مستخدم لموظف آخر")).toBeVisible();
+  await dlg.getByRole("button", { name: "إلغاء" }).click();
+  await expect(dlg).toHaveCount(0);
+});

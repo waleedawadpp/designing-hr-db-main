@@ -16,7 +16,7 @@ export default async function EmployeesPage() {
     <div>
       <PageHeader
         title="بيانات الموظفين"
-        hint="أضف الموظف الجديد في أول سطر فارغ أسفل الجدول | لا تحذف موظفًا قديمًا — اكتب تاريخ انتهاء خدمته فقط"
+        hint="«إضافة موظف» لموظف جديد، و✎ لتعديل موظف (أو عدّل في الجدول مباشرة) | لا تحذف موظفًا قديمًا — اكتب تاريخ انتهاء خدمته فقط"
         actions={<ExportButtons table="employees" />}
       />
       <EmployeesTable

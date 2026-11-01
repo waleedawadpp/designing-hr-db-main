@@ -5,6 +5,8 @@ import { DateField } from "@/components/date-field";
 import { EMP_TYPES, employeeStatus } from "@/lib/payroll";
 import { saveEmployee, type EmployeeInput } from "@/app/(app)/employees/actions";
 import { cn } from "@/lib/utils";
+import { Pencil, UserPlus } from "lucide-react";
+import { EmployeeDialog, emptyEmployee } from "@/components/employees/employee-dialog";
 
 type Row = EmployeeInput & { id: string | null; key: string };
 type Errors = Partial<Record<keyof EmployeeInput, string>>;
@@ -25,6 +27,8 @@ export function EmployeesTable({ rows: initial, canEdit, today, defaultLeave }: 
   const [rows, setRows] = useState<Row[]>(() => [...initial.map((r) => ({ ...r, key: r.id })), ...(canEdit ? [blank()] : [])]);
   const [errors, setErrors] = useState<Record<string, Errors>>({});
   const [saved, setSaved] = useState<string | null>(null);
+  /** النموذج المفتوح: undefined = مغلق، null = موظف جديد، وإلا مفتاح السطر */
+  const [dialog, setDialog] = useState<string | null | undefined>(undefined);
   const saving = useRef(new Set<string>());
   const snapshot = useRef(new Map(initial.map((r) => [r.id, JSON.stringify(r)])));
 
@@ -65,6 +69,23 @@ export function EmployeesTable({ rows: initial, canEdit, today, defaultLeave }: 
     router.refresh();
   }
 
+  function onDialogSaved(id: string, input: EmployeeInput) {
+    const editingKey = dialog;
+    snapshot.current.set(id, JSON.stringify({ id, ...input }));
+    setRows((rs) => {
+      if (editingKey) return rs.map((r) => (r.key === editingKey ? { ...r, ...input, id } : r));
+      const draft = rs.findIndex((r) => !r.id);
+      const row: Row = { ...input, id, key: id };
+      return draft === -1 ? [...rs, row] : [...rs.slice(0, draft), row, ...rs.slice(draft)];
+    });
+    if (editingKey) setErrors((e) => ({ ...e, [editingKey]: {} }));
+    setSaved(input.name.trim());
+    setDialog(undefined);
+    router.refresh();
+  }
+
+  const editing = dialog ? rows.find((r) => r.key === dialog) : undefined;
+
   const cell = (r: Row, f: keyof EmployeeInput, opts: { num?: boolean; width?: string; disabled?: boolean; placeholder?: string } = {}) => {
     const err = errors[r.key]?.[f];
     return (
@@ -87,11 +108,28 @@ export function EmployeesTable({ rows: initial, canEdit, today, defaultLeave }: 
 
   return (
     <div>
-      <div className="mb-2 h-5 text-sm" aria-live="polite">{saved && <span className="text-[#166534]">✔ تم الحفظ — {saved}</span>}</div>
+      <div className="mb-2 flex min-h-8 flex-wrap items-center justify-between gap-2">
+        <div className="text-sm" aria-live="polite">{saved && <span className="text-[#166534]">✔ تم الحفظ — {saved}</span>}</div>
+        {canEdit && (
+          <button type="button" onClick={() => setDialog(null)} className="flex items-center gap-1 rounded bg-navy px-4 py-1.5 text-sm font-semibold text-white">
+            <UserPlus size={16} color="#C9A227" /> إضافة موظف
+          </button>
+        )}
+      </div>
+      {dialog !== undefined && (dialog === null || editing) && (
+        <EmployeeDialog
+          id={editing?.id ?? null}
+          initial={editing ? (({ id: _i, key: _k, ...rest }) => rest)(editing) : emptyEmployee()}
+          defaultLeave={defaultLeave}
+          onClose={() => setDialog(undefined)}
+          onSaved={onDialogSaved}
+        />
+      )}
       <div className="overflow-auto rounded-lg border border-line bg-white">
         <table className="tbl w-full" data-testid="employees-table">
           <thead>
             <tr>
+              {canEdit && <th className="w-10"></th>}
               <th>الرقم</th><th>الاسم</th><th>النوع</th><th>الراتب الشهري</th><th>الأجرة اليومية</th><th>ساعات الدوام اليومي</th>
               <th>تاريخ التعيين</th><th>تاريخ انتهاء الخدمة</th><th>إجازات مسحوبة قبل النظام</th><th>رصيد الإجازة السنوي</th><th className="th-total">الحالة</th><th>ملاحظات</th>
             </tr>
@@ -102,6 +140,15 @@ export function EmployeesTable({ rows: initial, canEdit, today, defaultLeave }: 
               const isDriver = r.type === "سائق يومي";
               return (
                 <tr key={r.key} data-testid={r.id ? `emp-${r.code}` : "emp-new"}>
+                  {canEdit && (
+                    <td className="!px-1 !py-0 text-center">
+                      {r.id && (
+                        <button type="button" onClick={() => setDialog(r.key)} aria-label={`تعديل ${r.name}`} title="تعديل" className="rounded p-1 text-navy hover:bg-[#FEF3C7]">
+                          <Pencil size={15} />
+                        </button>
+                      )}
+                    </td>
+                  )}
                   {cell(r, "code", { width: "min-w-[90px]" })}
                   {cell(r, "name", { width: "min-w-[200px]" })}
                   <td className={cn("min-w-[120px] !py-0", err.type && "!bg-[#FEE2E2]")}>
