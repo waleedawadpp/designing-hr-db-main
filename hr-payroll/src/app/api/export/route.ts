@@ -126,8 +126,8 @@ async function backupSheets(): Promise<Sheet[]> {
   return [
     {
       title: "الموظفون",
-      headers: ["id", "الرقم", "الاسم", "النوع", "الراتب الشهري", "الأجرة اليومية", "ساعات الدوام", "تاريخ التعيين", "تاريخ الانتهاء", "إجازات قبل النظام", "رصيد خاص", "ملاحظات"],
-      rows: emps.map((e) => [e.id, e.code, e.name, e.type, e.monthlySalary, e.dailyWage, e.dailyHours, e.hireDate, e.endDate, e.leavesBeforeSystem, e.annualLeave, e.notes]),
+      headers: ["id", "الرقم", "الاسم", "النوع", "الراتب الشهري", "الأجرة اليومية", "ساعات الدوام", "تاريخ التعيين", "تاريخ الانتهاء", "إجازات قبل النظام", "رصيد خاص", "رصيد مُرحّل افتتاحي", "ملاحظات"],
+      rows: emps.map((e) => [e.id, e.code, e.name, e.type, e.monthlySalary, e.dailyWage, e.dailyHours, e.hireDate, e.endDate, e.leavesBeforeSystem, e.annualLeave, e.leaveOpeningBalance, e.notes]),
     },
     {
       title: "الحضور",

@@ -16,6 +16,8 @@ export interface EmployeeInput {
   endDate: string | null;
   leavesBeforeSystem: string;
   annualLeave: string;
+  /** رصيد إجازة مُرحّل من قبل بداية البيانات (قد يكون سالبًا) */
+  leaveOpeningBalance?: string;
   notes: string;
 }
 
@@ -41,6 +43,9 @@ export async function saveEmployee(id: string | null, input: EmployeeInput): Pro
   const hours = num(input.dailyHours);
   const before = num(input.leavesBeforeSystem);
   const leave = num(input.annualLeave ?? "");
+  const openingRaw = (input.leaveOpeningBalance ?? "").trim().replace(/,/g, "");
+  const opening = openingRaw === "" ? null : Number.isFinite(Number(openingRaw)) ? Number(openingRaw) : "bad";
+  if (opening === "bad") errors.leaveOpeningBalance = "رقم غير صحيح";
   if (salary === "bad") errors.monthlySalary = "رقم غير صحيح";
   if (wage === "bad") errors.dailyWage = "رقم غير صحيح";
   if (hours === "bad" || hours === 0) errors.dailyHours = "رقم أكبر من صفر";
@@ -73,6 +78,7 @@ export async function saveEmployee(id: string | null, input: EmployeeInput): Pro
     endDate: input.endDate || null,
     leavesBeforeSystem: before as number | null,
     annualLeave: leave as number | null,
+    ...(input.leaveOpeningBalance !== undefined ? { leaveOpeningBalance: opening as number | null } : {}),
     notes: input.notes.trim() || null,
   };
 

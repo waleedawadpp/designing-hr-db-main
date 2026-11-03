@@ -5,7 +5,8 @@ import { DateField } from "@/components/date-field";
 import { EMP_TYPES, employeeStatus } from "@/lib/payroll";
 import { saveEmployee, type EmployeeInput } from "@/app/(app)/employees/actions";
 import { cn } from "@/lib/utils";
-import { Pencil, UserPlus } from "lucide-react";
+import { IdCard, Pencil, UserPlus } from "lucide-react";
+import Link from "next/link";
 import { EmployeeDialog, emptyEmployee } from "@/components/employees/employee-dialog";
 
 type Row = EmployeeInput & { id: string | null; key: string };
@@ -15,7 +16,7 @@ const blank = (): Row => ({
   id: null,
   key: `new-${Math.random().toString(36).slice(2)}`,
   code: "", name: "", type: "", monthlySalary: "", dailyWage: "", dailyHours: "9",
-  hireDate: null, endDate: null, leavesBeforeSystem: "", annualLeave: "", notes: "",
+  hireDate: null, endDate: null, leavesBeforeSystem: "", annualLeave: "", leaveOpeningBalance: "", notes: "",
 });
 
 function isBlank(r: Row) {
@@ -129,7 +130,7 @@ export function EmployeesTable({ rows: initial, canEdit, today, defaultLeave }: 
         <table className="tbl w-full" data-testid="employees-table">
           <thead>
             <tr>
-              {canEdit && <th className="w-10"></th>}
+              <th className="w-16"></th>
               <th>الرقم</th><th>الاسم</th><th>النوع</th><th>الراتب الشهري</th><th>الأجرة اليومية</th><th>ساعات الدوام اليومي</th>
               <th>تاريخ التعيين</th><th>تاريخ انتهاء الخدمة</th><th>إجازات مسحوبة قبل النظام</th><th>رصيد الإجازة السنوي</th><th className="th-total">الحالة</th><th>ملاحظات</th>
             </tr>
@@ -140,15 +141,20 @@ export function EmployeesTable({ rows: initial, canEdit, today, defaultLeave }: 
               const isDriver = r.type === "سائق يومي";
               return (
                 <tr key={r.key} data-testid={r.id ? `emp-${r.code}` : "emp-new"}>
-                  {canEdit && (
-                    <td className="!px-1 !py-0 text-center">
-                      {r.id && (
-                        <button type="button" onClick={() => setDialog(r.key)} aria-label={`تعديل ${r.name}`} title="تعديل" className="rounded p-1 text-navy hover:bg-[#FEF3C7]">
-                          <Pencil size={15} />
-                        </button>
-                      )}
-                    </td>
-                  )}
+                  <td className="!px-1 !py-0 whitespace-nowrap text-center">
+                    {r.id && (
+                      <>
+                        <Link href={`/employees/${r.id}`} aria-label={`صفحة ${r.name}`} title="صفحة الموظف: الحضور والإجازات والرواتب" className="inline-block rounded p-1 text-navy hover:bg-[#FEF3C7]">
+                          <IdCard size={15} />
+                        </Link>
+                        {canEdit && (
+                          <button type="button" onClick={() => setDialog(r.key)} aria-label={`تعديل ${r.name}`} title="تعديل" className="rounded p-1 text-navy hover:bg-[#FEF3C7]">
+                            <Pencil size={15} />
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </td>
                   {cell(r, "code", { width: "min-w-[90px]" })}
                   {cell(r, "name", { width: "min-w-[200px]" })}
                   <td className={cn("min-w-[120px] !py-0", err.type && "!bg-[#FEE2E2]")}>

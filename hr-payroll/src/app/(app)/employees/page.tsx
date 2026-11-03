@@ -35,6 +35,7 @@ export default async function EmployeesPage() {
           endDate: e.endDate,
           leavesBeforeSystem: e.leavesBeforeSystem?.toString() ?? "",
           annualLeave: e.annualLeave?.toString() ?? "",
+          leaveOpeningBalance: e.leaveOpeningBalance?.toString() ?? "",
           notes: e.notes ?? "",
         }))}
       />

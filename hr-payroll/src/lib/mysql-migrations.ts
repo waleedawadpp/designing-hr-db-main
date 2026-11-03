@@ -11,5 +11,9 @@ export const MYSQL_MIGRATIONS: { id: string; sql: string }[] = [
   {
     "id": "0003_sayeq_yawmiya_to_driver",
     "sql": "-- تعديل بيانات: «سايق يومية» (622013) مسجّل «موظف» براتب 0 — يصبح «سائق يومي» بأجرة يومية 15 (بطلب المستخدم)\n-- يطال هذا الموظف فقط، وفقط إن كان ما زال «موظف»\nUPDATE `Employee` SET `type` = 'سائق يومي', `dailyWage` = 15, `monthlySalary` = NULL, `updatedAt` = CURRENT_TIMESTAMP(3)\nWHERE `code` = '622013' AND `name` = 'سايق يومية' AND `type` = 'موظف';\n\nINSERT INTO `AuditLog` (`id`, `at`, `userEmail`, `action`, `entity`, `entityId`, `summary`)\nSELECT UUID(), CURRENT_TIMESTAMP(3), 'migration@system', 'update', 'Employee', `id`, 'تغيير نوع سايق يومية (622013) من موظف إلى سائق يومي بأجرة يومية 15'\nFROM `Employee` WHERE `code` = '622013' AND `name` = 'سايق يومية' AND `type` = 'سائق يومي' AND `dailyWage` = 15;\n"
+  },
+  {
+    "id": "0004_leave_opening_balance",
+    "sql": "-- AlterTable\nALTER TABLE `Employee` ADD COLUMN `leaveOpeningBalance` DOUBLE NULL;\n\n"
   }
 ];

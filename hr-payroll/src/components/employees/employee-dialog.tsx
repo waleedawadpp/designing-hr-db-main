@@ -10,7 +10,7 @@ type Errors = Partial<Record<keyof EmployeeInput, string>>;
 
 export const emptyEmployee = (): EmployeeInput => ({
   code: "", name: "", type: "", monthlySalary: "", dailyWage: "", dailyHours: "9",
-  hireDate: null, endDate: null, leavesBeforeSystem: "", annualLeave: "", notes: "",
+  hireDate: null, endDate: null, leavesBeforeSystem: "", annualLeave: "", leaveOpeningBalance: "", notes: "",
 });
 
 const field = "w-full rounded border border-line bg-white px-3 py-1.5 text-sm text-[#0000FF] focus:border-gold focus:outline-none";
@@ -104,6 +104,7 @@ export function EmployeeDialog({
           {label("تاريخ انتهاء الخدمة", "endDate", <div className={cn("rounded border border-line px-2 py-1", err("endDate"))}><DateField ariaLabel="تاريخ انتهاء الخدمة" value={v.endDate} onChange={(d) => set({ endDate: d })} /></div>, "اتركه فارغًا ما دام على رأس العمل")}
           {label("إجازات مسحوبة قبل النظام", "leavesBeforeSystem", <input aria-label="إجازات مسحوبة قبل النظام" className={cn(field, err("leavesBeforeSystem"))} dir="ltr" inputMode="decimal" value={v.leavesBeforeSystem} onChange={(e) => set({ leavesBeforeSystem: e.target.value })} />)}
           {label("رصيد الإجازة السنوي", "annualLeave", <input aria-label="رصيد الإجازة السنوي" className={cn(field, err("annualLeave"))} dir="ltr" inputMode="numeric" placeholder={`${defaultLeave} (الافتراضي)`} value={v.annualLeave} onChange={(e) => set({ annualLeave: e.target.value })} />, "فارغ = رصيد الإعدادات")}
+          {label("رصيد إجازة مُرحّل (افتتاحي)", "leaveOpeningBalance", <input aria-label="رصيد إجازة مُرحّل" className={cn(field, err("leaveOpeningBalance"))} dir="ltr" inputMode="decimal" value={v.leaveOpeningBalance ?? ""} onChange={(e) => set({ leaveOpeningBalance: e.target.value })} />, "الأيام المتبقية للموظف من قبل أول سنة مسجّلة")}
           <div className="sm:col-span-2">
             {label("ملاحظات", "notes", <textarea aria-label="ملاحظات" rows={2} className={cn(field, err("notes"))} value={v.notes} onChange={(e) => set({ notes: e.target.value })} />)}
           </div>

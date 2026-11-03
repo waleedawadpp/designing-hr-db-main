@@ -53,8 +53,9 @@ test("المسار الكامل: موظف ← حضور ← إضافي وخصم �
 
   // 2) إضافة شهر جديد (11/2026) وتسجيل الحضور
   await page.goto("/attendance");
-  await page.getByRole("button", { name: "إضافة شهر جديد" }).click();
-  await expect(page.getByText("الشهر التالي: 11/2026")).toBeVisible();
+  await page.getByRole("button", { name: "فتح / إضافة شهر" }).click();
+  await expect(page.getByLabel("الشهر المطلوب")).toHaveValue("2026-11"); // الافتراضي: الشهر التالي لآخر شهر
+  await page.getByRole("button", { name: "عرض", exact: true }).click();
   await expect(page.getByText(`${CODE} — ${NAME}`)).toBeVisible();
   await page.getByRole("button", { name: "إنشاء صفوف 11/2026" }).click();
   await page.waitForURL(/month=2026-11/);
@@ -160,5 +161,5 @@ test("المشاهد يقرأ فقط", async ({ page }) => {
   await expect(page.getByTestId("emp-new")).toHaveCount(0);
   await expect(page.getByTestId("emp-622001").getByLabel("name")).toHaveAttribute("readonly", "");
   await page.goto("/attendance");
-  await expect(page.getByRole("button", { name: "إضافة شهر جديد" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "فتح / إضافة شهر" })).toHaveCount(0);
 });

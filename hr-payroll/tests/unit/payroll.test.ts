@@ -27,7 +27,9 @@ import {
   remainingLeave,
   round3,
   workingDaysInMonth,
-  yearLeaves,
+  leaveLedger,
+  leaveStartYear,
+  leaveYear,
   DEFAULT_SETTINGS,
   type EmployeeLike,
 } from "@/lib/payroll";
@@ -284,10 +286,29 @@ describe("3.7 الصافي", () => {
 });
 
 describe("3.8 إجازات السنة والرصيد", () => {
-  it("تُضاف الإجازات قبل النظام في سنة البداية فقط", () => {
-    expect(yearLeaves(4, { leavesBeforeSystem: 6 }, 2026, DEFAULT_SETTINGS)).toBe(10);
-    expect(yearLeaves(4, { leavesBeforeSystem: 6 }, 2027, DEFAULT_SETTINGS)).toBe(4);
-    expect(yearLeaves(4, { leavesBeforeSystem: null }, 2026, DEFAULT_SETTINGS)).toBe(4);
+  it("الإجازات قبل النظام تُضاف لأول سنة في السجل فقط", () => {
+    const m = new Map([[2026, 4], [2027, 4]]);
+    const [y26, y27] = leaveLedger({ leavesBeforeSystem: 6 }, m, 2027, DEFAULT_SETTINGS);
+    expect(y26.taken).toBe(10);
+    expect(y27.taken).toBe(4);
+    expect(leaveYear({ leavesBeforeSystem: null }, new Map([[2026, 4]]), 2026, DEFAULT_SETTINGS).taken).toBe(4);
+  });
+  it("ترحيل المتبقي: 2026 (30−10=20) ← 2027 (20+30−5=45)", () => {
+    const l = leaveLedger({}, new Map([[2026, 10], [2027, 5]]), 2027, DEFAULT_SETTINGS);
+    expect(l.map((y) => [y.year, y.carried, y.taken, y.remaining])).toEqual([[2026, 0, 10, 20], [2027, 20, 5, 45]]);
+  });
+  it("الرصيد الافتتاحي يُضاف لأول سنة، والمتبقي السالب يُرحَّل كما هو", () => {
+    const l = leaveLedger({ leaveOpeningBalance: 12 }, new Map([[2026, 50]]), 2027, DEFAULT_SETTINGS);
+    expect(l[0]).toMatchObject({ carried: 12, remaining: -8 });
+    expect(l[1]).toMatchObject({ carried: -8, taken: 0, remaining: 22 });
+  });
+  it("بداية السجل: أقدم سنة فيها حضور، ولا تسبق سنة التعيين", () => {
+    expect(leaveStartYear({}, [2025, 2026], DEFAULT_SETTINGS)).toBe(2025);
+    expect(leaveStartYear({}, [], DEFAULT_SETTINGS)).toBe(2026);
+    expect(leaveStartYear({ hireDate: "2025-06-01" }, [2024], DEFAULT_SETTINGS)).toBe(2025);
+  });
+  it("سنة قبل بداية السجل: بلا ترحيل", () => {
+    expect(leaveYear({}, new Map([[2026, 0]]), 2024, DEFAULT_SETTINGS)).toMatchObject({ carried: 0, remaining: 30 });
   });
   it("المتبقي = 30 − المسحوب", () => {
     expect(remainingLeave(10, DEFAULT_SETTINGS)).toBe(20);

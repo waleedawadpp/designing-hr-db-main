@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import { getSettings } from "@/lib/report";
-import { ARABIC_WEEKDAYS, formatDate, pad2, weekdayOf, yearLeaves, remainingLeave, leaveEntitlement, format1 } from "@/lib/payroll";
+import { ARABIC_WEEKDAYS, formatDate, pad2, weekdayOf, leaveYear, format1 } from "@/lib/payroll";
+import { leaveDaysByEmployee } from "@/lib/leave";
+import Link from "next/link";
 import { LeaveControls } from "@/components/leave/leave-controls";
 import { PrintButton } from "@/components/leave/print-button";
 import { currentMonthKey } from "@/lib/utils";
@@ -22,7 +24,7 @@ export default async function LeaveFormPage({ searchParams }: { searchParams: Pr
     });
     dates = months.flatMap((m) => m.days.map((d) => `${m.month}-${pad2(d.day)}`)).sort();
   }
-  const taken = emp ? yearLeaves(dates.length, emp, year, settings) : 0;
+  const leave = emp ? leaveYear(emp, (await leaveDaysByEmployee(prisma, year, emp.id)).get(emp.id) ?? new Map(), year, settings) : null;
   const lines = Array.from({ length: Math.max(30, dates.length) }, (_, i) => dates[i] ?? null);
 
   return (
@@ -42,9 +44,11 @@ export default async function LeaveFormPage({ searchParams }: { searchParams: Pr
         {emp && (
           <div className="mb-3 flex flex-wrap gap-4 text-sm">
             <span>الرقم الوظيفي: <b>{emp.code}</b></span>
-            <span>الرصيد السنوي: <b>{leaveEntitlement(emp, settings)} يوم</b></span>
-            <span>المسحوب في {year}: <b data-testid="leave-taken">{format1(taken)}</b>{year === settings.systemStartYear && emp.leavesBeforeSystem ? ` (منها ${emp.leavesBeforeSystem} قبل النظام)` : ""}</span>
-            <span>المتبقي: <b className={remainingLeave(taken, settings, emp) < 0 ? "text-[#B91C1C]" : "text-[#166534]"}>{format1(remainingLeave(taken, settings, emp))}</b></span>
+            <span>المُرحّل من {year - 1}: <b data-testid="leave-carried">{format1(leave!.carried)}</b></span>
+            <span>رصيد {year}: <b>{leave!.entitlement} يوم</b></span>
+            <span>المسحوب في {year}: <b data-testid="leave-taken">{format1(leave!.taken)}</b>{leave!.taken > dates.length ? ` (منها ${format1(leave!.taken - dates.length)} قبل النظام)` : ""}</span>
+            <span>المتبقي: <b data-testid="leave-remaining" className={leave!.remaining < 0 ? "text-[#B91C1C]" : "text-[#166534]"}>{format1(leave!.remaining)}</b></span>
+            <Link href={`/employees/${emp.id}?year=${year}`} className="no-print text-navy underline">سجل الإجازات الكامل ←</Link>
           </div>
         )}
         <table className="tbl w-full" data-testid="leave-table">

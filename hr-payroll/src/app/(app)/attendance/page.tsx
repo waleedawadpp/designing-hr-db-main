@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/db";
 import { currentUser } from "@/lib/auth";
 import { getSettings } from "@/lib/report";
-import { isWorkingInMonth, formatMonth } from "@/lib/payroll";
+import { ARABIC_WEEKDAYS } from "@/lib/payroll";
+import { RangeEntryForm } from "@/components/attendance/range-entry-form";
+import Link from "next/link";
 import { AttendanceGrid, type GridRow } from "@/components/attendance/attendance-grid";
 import { ExportButtons } from "@/components/export-buttons";
 import { getNextMonth } from "./actions";
@@ -53,10 +55,6 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const nextMonth = await getNextMonth();
   const closed = await closedMonths(prisma);
   const employees = await prisma.employee.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] });
-  const existingNext = new Set(
-    (await prisma.attendanceMonth.findMany({ where: { month: nextMonth, deletedAt: null }, select: { employeeId: true } })).map((r) => r.employeeId),
-  );
-  const preview = employees.filter((e) => isWorkingInMonth(e, nextMonth) && !existingNext.has(e.id)).map((e) => `${e.code} — ${e.name}`);
 
   return (
     <div>
@@ -70,7 +68,8 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
           </div>
         </div>
         <div className="bg-cream px-4 py-2 text-sm text-slate-700">
-          ▼ اختر الشهر ثم اضغط خانة اليوم واختر الرمز، أو اكتب الحرف مباشرة • تنقّل بالأسهم و Tab • الحفظ تلقائي
+          ▼ اختر الشهر ثم اضغط خانة اليوم واختر الرمز، أو اكتب الحرف مباشرة • تنقّل بالأسهم و Tab • الحفظ تلقائي •{" "}
+          <Link href="/attendance/day" className="font-semibold text-navy underline">التسجيل اليومي السريع</Link>
         </div>
       </div>
       <AttendanceGrid
@@ -83,8 +82,12 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
         weeklyOffDay={settings.weeklyOffDay}
         canEdit={user?.role === "admin"}
         nextMonth={nextMonth}
-        nextMonthLabel={formatMonth(nextMonth)}
-        preview={preview}
+        rangeForm={
+          <RangeEntryForm
+            employees={employees.map((e) => ({ id: e.id, label: `${e.code} — ${e.name}${e.endDate ? " (انتهت خدمته)" : ""}` }))}
+            weeklyOffDayName={ARABIC_WEEKDAYS[settings.weeklyOffDay]}
+          />
+        }
         closedMonths={closed}
       />
     </div>

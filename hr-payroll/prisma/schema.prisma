@@ -33,6 +33,7 @@ model Employee {
   endDate            String?
   leavesBeforeSystem Float?
   annualLeave        Int? // رصيد إجازة سنوي خاص بالموظف (فارغ = رصيد الإعدادات)
+  leaveOpeningBalance Float? // رصيد إجازة مُرحّل من قبل بداية البيانات (يُضاف لأول سنة)
   notes              String?
   sortOrder          Int       @default(0)
   createdAt          DateTime  @default(now())

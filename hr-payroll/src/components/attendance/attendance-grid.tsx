@@ -1,9 +1,9 @@
 "use client";
 import { Fragment, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarPlus, CheckCheck, UserCheck } from "lucide-react";
+import { CalendarPlus, CalendarRange, CheckCheck, UserCheck } from "lucide-react";
 import { CODES, INVALID_CODE_MESSAGE, countCodes, daysInMonth, format1, formatMonth, pad2, weekdayOf } from "@/lib/payroll";
-import { addNextMonth, fillDayPresent, fillEmployeePresent, setDayCode, setMonthNotes } from "@/app/(app)/attendance/actions";
+import { addMonth, previewMonth, fillDayPresent, fillEmployeePresent, setDayCode, setMonthNotes } from "@/app/(app)/attendance/actions";
 import { cn } from "@/lib/utils";
 
 export interface GridRow {
@@ -29,9 +29,8 @@ export function AttendanceGrid({
   weeklyOffDay,
   canEdit,
   nextMonth,
-  nextMonthLabel,
-  preview,
   closedMonths,
+  rangeForm,
 }: {
   rows: GridRow[];
   monthList: string[];
@@ -41,9 +40,9 @@ export function AttendanceGrid({
   weeklyOffDay: number;
   canEdit: boolean;
   nextMonth: string;
-  nextMonthLabel: string;
-  preview: string[];
   closedMonths: string[];
+  /** نموذج «تسجيل لفترة» (يُمرَّر من الصفحة) */
+  rangeForm?: React.ReactNode;
 }) {
   const router = useRouter();
   const path = usePathname();
@@ -53,6 +52,9 @@ export function AttendanceGrid({
   const [menu, setMenu] = useState<{ r: number; c: number; x: number; y: number } | null>(null);
   const [focus, setFocus] = useState<{ r: number; c: number }>({ r: 0, c: 0 });
   const [showNew, setShowNew] = useState(false);
+  const [showRange, setShowRange] = useState(false);
+  const [newMonth, setNewMonth] = useState(nextMonth);
+  const [preview, setPreview] = useState<{ month: string; list: { id: string; code: string; name: string }[] } | null>(null);
   const [pending, startTransition] = useTransition();
   const cellRefs = useRef(new Map<string, HTMLButtonElement>());
   const pendingSaves = useRef(0);
@@ -181,9 +183,14 @@ export function AttendanceGrid({
             >
               <UserCheck size={16} color="#C9A227" /> تعبئة الموظف حاضر لكل أيام العمل{focusedRow ? ` (${focusedRow.name})` : ""}
             </button>
-            <button onClick={() => setShowNew((v) => !v)} className="flex items-center gap-1 rounded bg-navy px-3 py-1 text-sm text-white">
-              <CalendarPlus size={16} color="#C9A227" /> إضافة شهر جديد
+            <button onClick={() => { setShowNew((v) => !v); setShowRange(false); }} className="flex items-center gap-1 rounded bg-navy px-3 py-1 text-sm text-white">
+              <CalendarPlus size={16} color="#C9A227" /> فتح / إضافة شهر
             </button>
+            {rangeForm && (
+              <button onClick={() => { setShowRange((v) => !v); setShowNew(false); }} className="flex items-center gap-1 rounded bg-navy px-3 py-1 text-sm text-white">
+                <CalendarRange size={16} color="#C9A227" /> تسجيل لفترة
+              </button>
+            )}
           </>
         )}
         <span className="ms-auto text-sm" aria-live="polite" data-testid="save-state">
@@ -202,29 +209,57 @@ export function AttendanceGrid({
         <div role="alert" className="rounded border border-[#B91C1C] bg-[#FEE2E2] px-3 py-2 text-sm font-semibold text-[#B91C1C]">{error}</div>
       )}
 
+      {showRange && canEdit && rangeForm && <div className="rounded-lg border-2 border-gold bg-cream p-3">{rangeForm}</div>}
+
       {showNew && canEdit && (
-        <div className="rounded-lg border-2 border-gold bg-cream p-3 text-sm">
-          <div className="mb-2 font-bold">الشهر التالي: {nextMonthLabel}</div>
-          {preview.length ? (
+        <div className="rounded-lg border-2 border-gold bg-cream p-3 text-sm" data-testid="month-panel">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <label htmlFor="new-month" className="font-bold">الشهر (ماضٍ أو قادم):</label>
+            <input
+              id="new-month"
+              type="month"
+              aria-label="الشهر المطلوب"
+              className="rounded border border-line bg-white px-2 py-1"
+              value={newMonth}
+              min="2020-01"
+              onChange={(e) => { setNewMonth(e.target.value); setPreview(null); }}
+            />
+            <button
+              disabled={pending || !newMonth}
+              onClick={() => startTransition(async () => {
+                const r = await previewMonth(newMonth);
+                if (r.ok) setPreview({ month: newMonth, list: r.missing }); else setError(r.error);
+              })}
+              className="rounded border border-navy px-3 py-1 disabled:opacity-50"
+            >
+              عرض
+            </button>
+            {monthList.includes(newMonth) && (
+              <button onClick={() => changeMonth(newMonth)} className="rounded border border-navy px-3 py-1">فتح {formatMonth(newMonth)}</button>
+            )}
+          </div>
+          {preview && preview.month === newMonth && (preview.list.length ? (
             <>
-              <div className="mb-2 text-slate-600">سيُنشأ سطر فارغ لكل من ({preview.length}):</div>
+              <div className="mb-2 text-slate-600">
+                {monthList.includes(newMonth) ? "موظفون يعملون في هذا الشهر وليس لهم سطر بعد" : "سيُنشأ سطر فارغ لكل من يعمل في هذا الشهر"} ({preview.list.length}):
+              </div>
               <div className="mb-3 grid max-h-40 grid-cols-2 gap-x-6 overflow-y-auto md:grid-cols-4">
-                {preview.map((p) => <div key={p}>{p}</div>)}
+                {preview.list.map((p) => <div key={p.id}>{p.code} — {p.name}</div>)}
               </div>
               <button
                 disabled={pending}
                 onClick={() => startTransition(async () => {
-                  const r = await run(addNextMonth());
-                  if (r.ok) { setShowNew(false); router.push(`${path}?month=${nextMonth}`); router.refresh(); }
+                  const r = await run(addMonth(newMonth));
+                  if (r.ok) { setShowNew(false); setPreview(null); router.push(`${path}?month=${newMonth}`); router.refresh(); }
                 })}
                 className="rounded bg-navy px-4 py-1.5 text-white disabled:opacity-50"
               >
-                إنشاء صفوف {nextMonthLabel}
+                إنشاء صفوف {formatMonth(newMonth)}
               </button>
             </>
           ) : (
-            <div className="text-slate-600">كل العاملين في هذا الشهر لهم صفوف بالفعل.</div>
-          )}
+            <div className="text-slate-600">كل العاملين في {formatMonth(newMonth)} لهم صفوف بالفعل.</div>
+          ))}
         </div>
       )}
 
@@ -248,7 +283,7 @@ export function AttendanceGrid({
           </thead>
           <tbody>
             {rows.length === 0 && (
-              <tr><td colSpan={42} className="p-6 text-center text-slate-500">لا توجد صفوف — استخدم «إضافة شهر جديد».</td></tr>
+              <tr><td colSpan={42} className="p-6 text-center text-slate-500">لا توجد صفوف — استخدم «فتح / إضافة شهر».</td></tr>
             )}
             {rows.map((row, r) => {
               const cnt = countCodes(row.days);

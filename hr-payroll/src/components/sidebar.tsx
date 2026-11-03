@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  CalendarDays,
   CalendarCheck,
   Clock,
   FileSpreadsheet,
@@ -38,7 +39,8 @@ const GROUPS: { label: string; color: string; items: Item[] }[] = [
     label: "شاشات الإدخال",
     color: "#C9A227",
     items: [
-      { href: "/attendance", label: "إدخال الحضور", icon: CalendarCheck },
+      { href: "/attendance/day", label: "التسجيل اليومي", icon: CalendarDays },
+      { href: "/attendance", label: "إدخال الحضور الشهري", icon: CalendarCheck },
       { href: "/employees", label: "بيانات الموظفين", icon: Users },
       { href: "/extras", label: "سجل الإضافي", icon: Clock },
       { href: "/deductions", label: "سجل الخصم", icon: MinusCircle },
@@ -85,7 +87,9 @@ export function Sidebar({ user }: { user: { name: string; role: string } }) {
             {g.items
               .filter((it) => isAdmin || !it.adminOnly)
               .map((it) => {
-                const active = it.href === "/" ? path === "/" : path.startsWith(it.href);
+                // الرابط الأطول المطابق هو النشط (مثل /attendance/day مقابل /attendance)
+                const match = (h: string) => (h === "/" ? path === "/" : path === h || path.startsWith(`${h}/`));
+                const active = match(it.href) && !GROUPS.some((gg) => gg.items.some((o) => o.href.length > it.href.length && o.href.startsWith(it.href) && match(o.href)));
                 const Icon = it.icon;
                 return (
                   <Link

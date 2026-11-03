@@ -6,11 +6,13 @@ import {
   countCodes,
   isDriver,
   isWorkingInMonth,
+  leaveYear,
   monthBounds,
   parseMonthKey,
   type MonthlyRow,
   type PayrollSettings,
 } from "./payroll";
+import { leaveDaysByEmployee } from "./leave";
 
 export async function getSettings(db: PrismaClient): Promise<PayrollSettings> {
   const s = await db.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
@@ -54,7 +56,7 @@ export async function buildMonthlyReport(db: PrismaClient, ym: string, opts: { l
   const { year } = parseMonthKey(ym);
   const settings = await getSettings(db);
 
-  const [employees, monthRows, extras, deductions, yearLeaveDays, extrasCount] = await Promise.all([
+  const [employees, monthRows, extras, deductions, leaveDays, extrasCount] = await Promise.all([
     db.employee.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] }),
     db.attendanceMonth.findMany({
       where: { month: ym, deletedAt: null },
@@ -67,10 +69,7 @@ export async function buildMonthlyReport(db: PrismaClient, ym: string, opts: { l
     db.deductionEntry.findMany({
       where: { deletedAt: null, date: { gte: start, lte: end }, employeeId: { not: null }, item: { not: null } },
     }),
-    db.attendanceDay.findMany({
-      where: { code: "إ", monthRow: { deletedAt: null, month: { gte: `${year}-01`, lte: `${year}-12` } } },
-      select: { monthRow: { select: { employeeId: true } } },
-    }),
+    leaveDaysByEmployee(db, year),
     db.extraEntry.count({
       where: {
         deletedAt: null,
@@ -79,12 +78,6 @@ export async function buildMonthlyReport(db: PrismaClient, ym: string, opts: { l
       },
     }),
   ]);
-
-  const leavesByEmp = new Map<string, number>();
-  for (const d of yearLeaveDays) {
-    const id = d.monthRow.employeeId;
-    leavesByEmp.set(id, (leavesByEmp.get(id) ?? 0) + 1);
-  }
 
   const rowsByEmp = new Map<string, typeof monthRows>();
   for (const r of monthRows) {
@@ -112,7 +105,8 @@ export async function buildMonthlyReport(db: PrismaClient, ym: string, opts: { l
       codes: allCodes,
       extras: extras.filter((x) => x.employeeId === e.id),
       deductions: deductions.filter((x) => x.employeeId === e.id),
-      leaveCountInYear: leavesByEmp.get(e.id) ?? 0,
+      leaveCountInYear: leaveDays.get(e.id)?.get(year) ?? 0,
+      leave: leaveYear(e, leaveDays.get(e.id) ?? new Map(), year, settings),
       settings,
     });
     codesByDay.forEach((c, i) => {

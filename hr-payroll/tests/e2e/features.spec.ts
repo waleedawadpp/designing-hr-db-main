@@ -142,7 +142,7 @@ test("النسخة الاحتياطية للمدير فقط والإعدادات
   await page.getByRole("button", { name: "حفظ الإعدادات" }).click();
   await expect(page.getByText("✔ تم الحفظ")).toBeVisible();
   await page.goto("/leave-form?y=2026");
-  await expect(page.getByText("الرصيد السنوي: 25 يوم")).toBeVisible();
+  await expect(page.getByText("رصيد 2026: 25 يوم")).toBeVisible();
   await page.goto("/settings");
   await page.locator('input[name="annualLeaveEntitlement"]').fill("30");
   await page.getByRole("button", { name: "حفظ الإعدادات" }).click();
