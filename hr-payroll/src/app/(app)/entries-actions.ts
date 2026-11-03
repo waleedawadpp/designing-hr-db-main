@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { audit } from "@/lib/audit";
+import { assertMonthsOpen } from "@/lib/month-close";
 import { DEDUCTION_ITEMS, EXTRA_ITEMS, isValidDate, isValidHM } from "@/lib/payroll";
 
 export type EntryKind = "extra" | "deduction";
@@ -72,11 +73,14 @@ export async function saveEntry(kind: EntryKind, id: string | null, patch: Entry
     if (id) {
       const before = await model.findUnique({ where: { id } });
       if (!before || before.deletedAt) return { ok: false, error: "السطر غير موجود" };
+      // لا تعديل في شهر معتمد، ولا نقل سطر إليه
+      await assertMonthsOpen(prisma, before.date as string | null, data.date as string | null | undefined);
       await model.update({ where: { id }, data });
       await audit(user, "update", entity, id, `تعديل سطر في ${label}: ${Object.keys(data).join("، ")}`, before, data);
       revalidatePath("/", "layout");
       return { ok: true, id };
     }
+    await assertMonthsOpen(prisma, data.date as string | null | undefined);
     const created = await model.create({ data });
     await audit(user, "create", entity, created.id, `سطر جديد في ${label}`, undefined, data);
     revalidatePath("/", "layout");
@@ -90,6 +94,16 @@ export async function saveEntry(kind: EntryKind, id: string | null, patch: Entry
 export async function softDeleteEntry(kind: EntryKind, id: string): Promise<Result> {
   const user = await requireAdmin();
   const entity = kind === "extra" ? "ExtraEntry" : "DeductionEntry";
+  const row =
+    kind === "extra"
+      ? await prisma.extraEntry.findUnique({ where: { id }, select: { date: true } })
+      : await prisma.deductionEntry.findUnique({ where: { id }, select: { date: true } });
+  if (!row) return { ok: false, error: "السطر غير موجود" };
+  try {
+    await assertMonthsOpen(prisma, row.date);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "تعذّر الحذف" };
+  }
   if (kind === "extra") await prisma.extraEntry.update({ where: { id }, data: { deletedAt: new Date() } });
   else await prisma.deductionEntry.update({ where: { id }, data: { deletedAt: new Date() } });
   await audit(user, "delete", entity, id, "حذف منطقي لسطر");

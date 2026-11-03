@@ -33,6 +33,10 @@ export interface EmployeeLike {
   hireDate?: string | null;
   endDate?: string | null;
   leavesBeforeSystem?: number | null;
+  /** رصيد إجازة سنوي خاص بالموظف؛ فارغ = رصيد الإعدادات */
+  annualLeave?: number | null;
+  /** رصيد إجازة مُرحّل من قبل بداية البيانات — يُضاف إلى أول سنة في سجل الإجازات */
+  leaveOpeningBalance?: number | null;
 }
 
 export interface PayrollSettings {
@@ -296,12 +300,64 @@ export const ABSENT_DAY_WARNING = "⚠ الموظف مسجّل غائب في ه�
 
 // ───────────────────────── 3.8 الإجازات ─────────────────────────
 
-export function yearLeaves(leaveCountInYear: number, emp: Pick<EmployeeLike, "leavesBeforeSystem">, year: number, settings: PayrollSettings): number {
-  return leaveCountInYear + (year === settings.systemStartYear ? emp.leavesBeforeSystem ?? 0 : 0);
+export type LeaveEmployee = Pick<EmployeeLike, "hireDate" | "leavesBeforeSystem" | "annualLeave" | "leaveOpeningBalance">;
+
+/** سنة في سجل إجازات الموظف: المُرحّل من السنة السابقة + الاستحقاق − المأخوذ = المتبقي (يُرحَّل للسنة التالية). */
+export interface LeaveYear {
+  year: number;
+  carried: number;
+  entitlement: number;
+  taken: number;
+  remaining: number;
 }
 
-export function remainingLeave(taken: number, settings: PayrollSettings): number {
-  return settings.annualLeaveEntitlement - taken;
+/**
+ * أول سنة في سجل الإجازات: الأقدم بين سنة بداية النظام وأول سنة فيها حضور مسجّل للموظف،
+ * ولا تسبق سنة تعيينه.
+ */
+export function leaveStartYear(emp: LeaveEmployee, yearsWithData: Iterable<number>, settings: PayrollSettings): number {
+  let start = settings.systemStartYear;
+  for (const y of yearsWithData) if (y < start) start = y;
+  const hireYear = emp.hireDate ? Number(emp.hireDate.slice(0, 4)) : null;
+  return hireYear && hireYear > start ? hireYear : start;
+}
+
+/**
+ * سجل الإجازات السنوي مع ترحيل المتبقي، من أول سنة حتى upToYear.
+ * takenByYear: عدد أيام «إ» لكل سنة — ويجب أن يحوي كل سنة فيها حضور مسجّل للموظف (ولو بقيمة 0)
+ * حتى تُحسب بداية السجل منها. الرصيد الافتتاحي والإجازات المسحوبة قبل النظام يُضافان لأول سنة.
+ * المتبقي السالب يُرحَّل كما هو (يُنقص رصيد السنة التالية).
+ */
+export function leaveLedger(emp: LeaveEmployee, takenByYear: ReadonlyMap<number, number>, upToYear: number, settings: PayrollSettings): LeaveYear[] {
+  const start = leaveStartYear(emp, takenByYear.keys(), settings);
+  const out: LeaveYear[] = [];
+  let carried = emp.leaveOpeningBalance ?? 0;
+  for (let year = start; year <= upToYear; year++) {
+    const entitlement = leaveEntitlement(emp, settings);
+    const taken = (takenByYear.get(year) ?? 0) + (year === start ? emp.leavesBeforeSystem ?? 0 : 0);
+    const remaining = carried + entitlement - taken;
+    out.push({ year, carried, entitlement, taken, remaining });
+    carried = remaining;
+  }
+  return out;
+}
+
+/** سطر سنة واحدة من سجل الإجازات (سنة قبل بداية السجل: لا مُرحّل ولا مأخوذ سابق). */
+export function leaveYear(emp: LeaveEmployee, takenByYear: ReadonlyMap<number, number>, year: number, settings: PayrollSettings): LeaveYear {
+  const row = leaveLedger(emp, takenByYear, year, settings).at(-1);
+  if (row && row.year === year) return row;
+  const entitlement = leaveEntitlement(emp, settings);
+  const taken = takenByYear.get(year) ?? 0;
+  return { year, carried: 0, entitlement, taken, remaining: entitlement - taken };
+}
+
+/** الرصيد السنوي للموظف: الخاص به إن وُجد، وإلا رصيد الإعدادات. */
+export function leaveEntitlement(emp: Pick<EmployeeLike, "annualLeave"> | null | undefined, settings: PayrollSettings): number {
+  return emp?.annualLeave ?? settings.annualLeaveEntitlement;
+}
+
+export function remainingLeave(taken: number, settings: PayrollSettings, emp?: Pick<EmployeeLike, "annualLeave"> | null, carried = 0): number {
+  return carried + leaveEntitlement(emp, settings) - taken;
 }
 
 // ───────────────────────── 3.9 نسبة الحضور (على أيام العمل بدون يوم العطلة) ─────────────────────────
@@ -330,6 +386,8 @@ export interface MonthlyRow extends MonthlyPay {
   workingDays: number;
   rate: number;
   yearLeaves: number;
+  /** المُرحّل من السنة السابقة */
+  leaveCarried?: number;
   leaveRemaining: number;
 }
 
@@ -343,6 +401,8 @@ export interface MonthlyInput {
   deductions: DeductionLike[];
   /** عدد "إ" للموظف في سنة الشهر كلها */
   leaveCountInYear: number;
+  /** سطر سنة الشهر من سجل الإجازات (مع الترحيل). إن غاب: سجل من سنة الشهر وحدها */
+  leave?: LeaveYear;
   settings?: PayrollSettings;
 }
 
@@ -357,7 +417,7 @@ export function computeMonthlyRow(input: MonthlyInput): MonthlyRow {
   }
   for (const d of input.deductions) deductions += deductionAmount(d, input.employee);
   const { year } = parseMonthKey(input.ym);
-  const yl = yearLeaves(input.leaveCountInYear, input.employee, year, settings);
+  const leave = input.leave ?? leaveYear(input.employee, new Map([[year, input.leaveCountInYear]]), year, settings);
   return {
     ...pay,
     employee: input.employee,
@@ -368,8 +428,9 @@ export function computeMonthlyRow(input: MonthlyInput): MonthlyRow {
     net: pay.due + overtime + bonuses - deductions,
     workingDays: workingDaysInMonth(input.ym, settings.weeklyOffDay),
     rate: attendanceRate(counts.present, input.ym, settings.weeklyOffDay),
-    yearLeaves: yl,
-    leaveRemaining: remainingLeave(yl, settings),
+    yearLeaves: leave.taken,
+    leaveCarried: leave.carried,
+    leaveRemaining: leave.remaining,
   };
 }
 
@@ -383,9 +444,10 @@ export function fmtNumber3(v: number): string {
   return fmt3.format(Object.is(Math.round(v * 1000), -0) ? 0 : v);
 }
 
-/** "ر.ع. 1,234.567" */
+/** "ر.ع. 1,234.567" — القيمة السالبة تُعزل باتجاه LTR حتى تظهر إشارة السالب قبل الرقم في الواجهة العربية. */
 export function formatOMR(v: number): string {
-  return `ر.ع. ${fmtNumber3(v)}`;
+  const n = fmtNumber3(v);
+  return n.startsWith("-") ? `ر.ع. \u2066${n}\u2069` : `ر.ع. ${n}`;
 }
 
 export function formatInt(v: number): string {

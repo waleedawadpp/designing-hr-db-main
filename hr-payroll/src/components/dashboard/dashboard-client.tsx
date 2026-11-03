@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Combobox } from "@/components/combobox";
@@ -37,11 +38,13 @@ export function DashboardClient({
   rows,
   presentPerDay,
   extrasCount,
+  closed,
 }: {
   ym: string;
   rows: DashRow[];
   presentPerDay: { all: number; employees: number; drivers: number }[];
   extrasCount: number;
+  closed?: boolean;
 }) {
   const router = useRouter();
   const path = usePathname();
@@ -64,6 +67,7 @@ export function DashboardClient({
       extras: sum((r) => r.extras),
       net: sum((r) => r.net),
       deductions: sum((r) => r.deductions),
+      negatives: rows.filter((r) => r.net < 0),
     };
   }, [rows]);
 
@@ -105,6 +109,16 @@ export function DashboardClient({
         <span className="text-sm text-gold">◄ اختر السنة والشهر لعرض أي فترة — البيانات من السجلات</span>
       </div>
 
+      {k.negatives.length > 0 && (
+        <div role="alert" className="rounded border border-[#B91C1C] bg-[#FEE2E2] px-3 py-2 text-sm font-semibold text-[#B91C1C]">
+          ⚠ صافي بالسالب هذا الشهر: {k.negatives.map((r) => r.name).join("، ")} — الخصومات أكبر من المستحق.
+        </div>
+      )}
+      {!closed && rows.length > 0 && (
+        <div className="no-print rounded border border-gold/60 bg-cream px-3 py-2 text-sm text-[#B45309]">
+          الشهر غير معتمد بعد — الأرقام تتغير مع أي تعديل. بعد مراجعة الرواتب اعتمده من «الكشف الشهري».
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {cards.map((c) => (
           <div key={c.t} className="rounded-lg border border-line border-t-4 border-t-gold bg-white p-3 shadow-sm" data-testid={`kpi-${c.t}`}>
@@ -143,10 +157,18 @@ export function DashboardClient({
                 ].map(([a, b]) => (
                   <div key={a} className="contents">
                     <dt className="text-slate-500">{a}</dt>
-                    <dd className={cn("money font-semibold text-navy", a === "الصافي المستحق" && "text-base")} data-testid={`card-${a}`}>{b}</dd>
+                    <dd className={cn("money font-semibold text-navy", a === "الصافي المستحق" && "text-base", a === "الصافي المستحق" && sel.net < 0 && "text-[#B91C1C]")} data-testid={`card-${a}`}>{b}</dd>
                   </div>
                 ))}
               </dl>
+            )}
+            {sel && (
+              <Link
+                href={`/payslip?y=${y}&m=${m}&emp=${sel.id}`}
+                className="no-print mt-3 inline-block rounded border border-gold bg-cream px-3 py-1 text-sm text-navy hover:bg-gold/20"
+              >
+                قسيمة الراتب ←
+              </Link>
             )}
           </div>
         </div>
@@ -219,7 +241,7 @@ export function DashboardClient({
                   <td className="num">{formatOMR(r.due)}</td>
                   <td className="num">{formatOMR(r.extras)}</td>
                   <td className={cn("num", r.deductions > 0 && "font-semibold text-[#B91C1C]")}>{formatOMR(r.deductions)}</td>
-                  <td className="num font-bold" data-testid="dash-net">{formatOMR(r.net)}</td>
+                  <td className={cn("num font-bold", r.net < 0 && "!bg-[#FEE2E2] text-[#B91C1C]")} data-testid="dash-net">{formatOMR(r.net)}</td>
                 </tr>
               ))}
               <tr className="font-bold [&>td]:!bg-[#E8F5EC]">

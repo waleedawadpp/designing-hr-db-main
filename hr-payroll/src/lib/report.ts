@@ -6,11 +6,13 @@ import {
   countCodes,
   isDriver,
   isWorkingInMonth,
+  leaveYear,
   monthBounds,
   parseMonthKey,
   type MonthlyRow,
   type PayrollSettings,
 } from "./payroll";
+import { leaveDaysByEmployee } from "./leave";
 
 export async function getSettings(db: PrismaClient): Promise<PayrollSettings> {
   const s = await db.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
@@ -34,14 +36,27 @@ export interface MonthlyReport {
   /** عدد "ح" لكل يوم: الكل، والموظفون، والسواق */
   presentPerDay: { all: number; employees: number; drivers: number }[];
   extrasCount: number;
+  /** الشهر معتمد: النتيجة من لقطة وقت الاعتماد */
+  closed?: { at: string; by: string };
 }
 
-export async function buildMonthlyReport(db: PrismaClient, ym: string): Promise<MonthlyReport> {
+/**
+ * كشف الشهر. إن كان الشهر معتمدًا تُعاد اللقطة المحفوظة وقت الاعتماد كما هي
+ * (فلا يغيّرها تعديل راتب أو إعدادات لاحقًا). live = true يحسب من البيانات الحالية دائمًا.
+ */
+export async function buildMonthlyReport(db: PrismaClient, ym: string, opts: { live?: boolean } = {}): Promise<MonthlyReport> {
+  if (!opts.live) {
+    const closed = await db.monthClose.findUnique({ where: { month: ym } });
+    if (closed) {
+      const snap = JSON.parse(closed.snapshot) as MonthlyReport;
+      return { ...snap, closed: { at: closed.closedAt.toISOString(), by: closed.closedBy } };
+    }
+  }
   const { start, end, days } = monthBounds(ym);
   const { year } = parseMonthKey(ym);
   const settings = await getSettings(db);
 
-  const [employees, monthRows, extras, deductions, yearLeaveDays, extrasCount] = await Promise.all([
+  const [employees, monthRows, extras, deductions, leaveDays, extrasCount] = await Promise.all([
     db.employee.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] }),
     db.attendanceMonth.findMany({
       where: { month: ym, deletedAt: null },
@@ -54,10 +69,7 @@ export async function buildMonthlyReport(db: PrismaClient, ym: string): Promise<
     db.deductionEntry.findMany({
       where: { deletedAt: null, date: { gte: start, lte: end }, employeeId: { not: null }, item: { not: null } },
     }),
-    db.attendanceDay.findMany({
-      where: { code: "إ", monthRow: { deletedAt: null, month: { gte: `${year}-01`, lte: `${year}-12` } } },
-      select: { monthRow: { select: { employeeId: true } } },
-    }),
+    leaveDaysByEmployee(db, year),
     db.extraEntry.count({
       where: {
         deletedAt: null,
@@ -66,12 +78,6 @@ export async function buildMonthlyReport(db: PrismaClient, ym: string): Promise<
       },
     }),
   ]);
-
-  const leavesByEmp = new Map<string, number>();
-  for (const d of yearLeaveDays) {
-    const id = d.monthRow.employeeId;
-    leavesByEmp.set(id, (leavesByEmp.get(id) ?? 0) + 1);
-  }
 
   const rowsByEmp = new Map<string, typeof monthRows>();
   for (const r of monthRows) {
@@ -99,7 +105,8 @@ export async function buildMonthlyReport(db: PrismaClient, ym: string): Promise<
       codes: allCodes,
       extras: extras.filter((x) => x.employeeId === e.id),
       deductions: deductions.filter((x) => x.employeeId === e.id),
-      leaveCountInYear: leavesByEmp.get(e.id) ?? 0,
+      leaveCountInYear: leaveDays.get(e.id)?.get(year) ?? 0,
+      leave: leaveYear(e, leaveDays.get(e.id) ?? new Map(), year, settings),
       settings,
     });
     codesByDay.forEach((c, i) => {
