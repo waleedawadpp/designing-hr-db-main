@@ -16,7 +16,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.deps import get_current_user, require_permission
+from app.deps import get_current_user
 from app.schemas import (
     ChatIn, ChatOut, ForecastRow, ImageProcessIn, ImageProcessOut, ProductGenIn,
     ProductGenOut, RecommendationOut,
@@ -145,11 +145,7 @@ def assistant_chat(
     ]
     history.append({"role": "user", "content": payload.message})
 
-    try:
-        reply = get_ai_provider().assistant_reply(history, suggestions)
-    except Exception as exc:  # noqa: BLE001 — e.g. every API key exhausted
-        db.rollback()
-        raise HTTPException(status_code=502, detail="AI assistant unavailable") from exc
+    reply = get_ai_provider().assistant_reply(history, suggestions)
     db.add(AIChatMessage(chat_id=session.chat_id, role="assistant", content=reply))
     db.commit()
 
@@ -239,15 +235,3 @@ def generate_forecast(
     for f in rows:
         db.refresh(f)
     return rows
-
-
-@router.get("/keys/status")
-def ai_key_status(_admin: AppUser = Depends(require_permission("reports.platform"))):
-    """Health of each configured AI API key (masked) — which are benched and why."""
-    provider = get_ai_provider()
-    key_status = getattr(provider, "key_status", None)
-    return {
-        "provider": type(provider).__name__,
-        "model": getattr(provider, "model", None),
-        "keys": key_status() if key_status else [],
-    }

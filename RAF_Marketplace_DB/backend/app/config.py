@@ -36,18 +36,9 @@ class Settings(BaseSettings):
     seed_admin_name: str = "Administrator"
 
     # AI layer
-    ai_provider: str = "stub"            # "stub" | "anthropic" | "gemini"
+    ai_provider: str = "stub"            # "stub" | "anthropic"
     ai_model: str = "claude-sonnet-4-6"  # used when ai_provider="anthropic"
     anthropic_api_key: str | None = None
-    anthropic_api_keys: str | None = None  # comma-separated; rotated automatically
-    gemini_model: str = "gemini-2.5-flash"  # used when ai_provider="gemini"
-    gemini_api_key: str | None = None
-    gemini_api_keys: str | None = None     # comma-separated; rotated automatically
-    # Automatic key switching: a key that hits a rate limit / quota / 5xx is
-    # benched for ai_key_cooldown_seconds; a rejected (401/403) key for longer.
-    ai_key_cooldown_seconds: float = 60.0
-    ai_key_auth_cooldown_seconds: float = 3600.0
-    ai_request_timeout_seconds: float = 30.0
 
 
 settings = Settings()

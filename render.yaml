@@ -26,9 +26,7 @@ services:
       - key: RAF_CORS_ORIGINS
         value: "*"                      # tighten to your frontend domain later
       - key: RAF_AI_PROVIDER
-        value: stub                     # "anthropic" or "gemini" + keys below
-      - key: RAF_GEMINI_API_KEYS
-        sync: false                     # comma-separated; rotated automatically
+        value: stub                     # set to "anthropic" + key to use Claude
       - key: RAF_SEED_ADMIN_EMAIL
         sync: false                     # set in the dashboard
       - key: RAF_SEED_ADMIN_PASSWORD

@@ -34,10 +34,7 @@ def generate_campaign(
 ):
     _validate_channel(payload.channel)
     provider = get_ai_provider()
-    try:
-        content = provider.generate_campaign(channel=payload.channel, topic=payload.topic)
-    except Exception as exc:  # noqa: BLE001 — e.g. every API key exhausted
-        raise HTTPException(status_code=502, detail="AI generation failed") from exc
+    content = provider.generate_campaign(channel=payload.channel, topic=payload.topic)
 
     db.add(AIJob(
         job_type=AIJobType.marketing, status=AIJobStatus.succeeded,
