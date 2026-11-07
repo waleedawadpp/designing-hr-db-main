@@ -197,6 +197,29 @@ The AI endpoints sit behind a **pluggable provider** (`app/services/ai.py`):
 - **`anthropic`** — set `RAF_AI_PROVIDER=anthropic` and `RAF_ANTHROPIC_API_KEY`
   to route generation/chat through the Claude API (`RAF_AI_MODEL`,
   default `claude-sonnet-4-6`). Install the `anthropic` SDK to use it.
+- **`gemini`** — set `RAF_AI_PROVIDER=gemini` and `RAF_GEMINI_API_KEY` to use
+  Google Gemini (`RAF_GEMINI_MODEL`, default `gemini-2.5-flash`). Calls the REST
+  API through `httpx`, so no extra SDK is needed.
+
+### Automatic API-key switching
+
+Both real providers accept **several keys**, comma-separated:
+
+```
+RAF_GEMINI_API_KEYS=key1,key2,key3
+RAF_ANTHROPIC_API_KEYS=sk-ant-1,sk-ant-2
+```
+
+Requests are spread round-robin across the keys. When a key hits a rate
+limit, runs out of quota, times out or gets a 5xx, it is benched for
+`RAF_AI_KEY_COOLDOWN_SECONDS` (default 60) and the **same request is retried
+on the next key** — the user never sees the error. A rejected key (401/403)
+is benched for `RAF_AI_KEY_AUTH_COOLDOWN_SECONDS` (default 3600). Only when
+every key fails does the endpoint return `502`. Bad requests (e.g. 400) are
+not retried, since another key would fail the same way.
+
+`GET /ai/keys/status` (requires `reports.platform`) shows each key's health
+with the key masked to its last 4 characters.
 
 Every generation is recorded in `ai_job` (input/output/status/model); the
 shopping assistant persists turns to `ai_chat_session` / `ai_chat_message`.
