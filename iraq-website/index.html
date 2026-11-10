@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="Mohamed Abdulsatar">
+  <meta name="description" content="A website about Iraq - IT Project by Mohamed Abdulsatar">
+  <title>Iraq - The Land of Mesopotamia</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: Georgia, "Times New Roman", serif; background: #faf6ee; color: #2b2b2b; line-height: 1.7; }
+    a { color: #b3261e; }
+
+    header { background: linear-gradient(#ce1126 0 33%, #ffffff 33% 66%, #000000 66%); text-align: center; padding: 50px 16px; }
+    header h1 { font-size: 3rem; color: #007a3d; background: rgba(255,255,255,0.9); display: inline-block; padding: 10px 30px; border-radius: 8px; }
+    header p { margin-top: 10px; font-size: 1.2rem; color: #fff; background: rgba(0,0,0,0.6); display: inline-block; padding: 6px 18px; border-radius: 6px; }
+
+    nav { background: #1d1d1d; position: sticky; top: 0; z-index: 10; }
+    nav ul { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; }
+    nav a { display: block; color: #fff; text-decoration: none; padding: 14px 18px; font-family: Arial, sans-serif; font-size: 0.95rem; }
+    nav a:hover { background: #007a3d; }
+
+    main { max-width: 1100px; margin: 0 auto; padding: 20px 16px; }
+    section { background: #fff; margin: 30px 0; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+    h2 { color: #007a3d; font-size: 2rem; border-bottom: 3px solid #ce1126; padding-bottom: 8px; margin-bottom: 20px; }
+    h3 { color: #b3261e; margin: 15px 0 8px; }
+    p { margin-bottom: 12px; }
+
+    figure { margin: 15px 0; text-align: center; }
+    figure img { width: 100%; max-height: 420px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; background: #eee; }
+    figcaption { font-style: italic; color: #666; font-size: 0.9rem; margin-top: 6px; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+    .card { background: #faf6ee; border-radius: 8px; padding: 15px; border-left: 5px solid #007a3d; }
+    .card img { width: 100%; height: 180px; object-fit: cover; border-radius: 6px; background: #eee; }
+
+    table { width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; }
+    th, td { border: 1px solid #ccc; padding: 10px 12px; text-align: left; }
+    th { background: #007a3d; color: #fff; width: 35%; }
+    tr:nth-child(even) td { background: #f4f4f4; }
+
+    .flag { float: right; width: 220px; margin: 0 0 15px 20px; border: 1px solid #ccc; }
+    ol, ul.list { margin: 10px 0 10px 25px; }
+
+    footer { background: #1d1d1d; color: #ddd; text-align: center; padding: 30px 16px; font-family: Arial, sans-serif; }
+    footer strong { color: #fff; font-size: 1.2rem; }
+
+    @media (max-width: 600px) {
+      header h1 { font-size: 2rem; }
+      .flag { float: none; display: block; margin: 0 auto 15px; }
+      section { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>IRAQ</h1><br>
+    <p>The Land Between Two Rivers &mdash; Cradle of Civilization</p>
+  </header>
+
+  <nav>
+    <ul>
+      <li><a href="#about">About</a></li>
+      <li><a href="#facts">Quick Facts</a></li>
+      <li><a href="#history">History</a></li>
+      <li><a href="#geography">Geography</a></li>
+      <li><a href="#cities">Cities</a></li>
+      <li><a href="#landmarks">Landmarks</a></li>
+      <li><a href="#culture">Culture &amp; Food</a></li>
+      <li><a href="#sources">Sources</a></li>
+    </ul>
+  </nav>
+
+  <main>
+
+    <!-- ABOUT -->
+    <section id="about">
+      <h2>About Iraq</h2>
+      <img class="flag" src="https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_Iraq.svg?width=440" alt="Flag of Iraq">
+      <p><strong>Iraq</strong> (Arabic: العراق, <em>al-ʿIrāq</em>), officially the <strong>Republic of Iraq</strong>, is a country in Western Asia. It borders Turkey to the north, Iran to the east, Kuwait and the Persian Gulf to the southeast, Saudi Arabia to the south, Jordan to the southwest and Syria to the west. Its capital and largest city is <strong>Baghdad</strong>.</p>
+      <p>Iraq is home to ancient <strong>Mesopotamia</strong>, the land between the <strong>Tigris</strong> and <strong>Euphrates</strong> rivers. Many historians call it the <em>"Cradle of Civilization"</em>, because writing, the wheel, the first cities and the first written laws appeared here thousands of years ago.</p>
+      <p>Today Iraq is a federal parliamentary republic with a young and growing population. It has one of the largest oil reserves in the world, and a rich mix of peoples, languages and religions.</p>
+    </section>
+
+    <!-- FACTS -->
+    <section id="facts">
+      <h2>Quick Facts</h2>
+      <table>
+        <tr><th>Official name</th><td>Republic of Iraq</td></tr>
+        <tr><th>Capital</th><td>Baghdad</td></tr>
+        <tr><th>Official languages</th><td>Arabic and Kurdish</td></tr>
+        <tr><th>Population</th><td>About 46 million</td></tr>
+        <tr><th>Area</th><td>About 438,000 km²</td></tr>
+        <tr><th>Currency</th><td>Iraqi Dinar (IQD)</td></tr>
+        <tr><th>Main rivers</th><td>Tigris (Dijla) and Euphrates (Furat)</td></tr>
+        <tr><th>Government</th><td>Federal parliamentary republic</td></tr>
+        <tr><th>Internet domain</th><td>.iq</td></tr>
+        <tr><th>Calling code</th><td>+964</td></tr>
+      </table>
+      <figure>
+        <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Iraq_in_its_region.svg?width=800" alt="Map showing Iraq in the Middle East">
+        <figcaption>Location of Iraq in the Middle East</figcaption>
+      </figure>
+    </section>
+
+    <!-- HISTORY -->
+    <section id="history">
+      <h2>History</h2>
+      <h3>Ancient Mesopotamia</h3>
+      <p>Around 3500 BC the <strong>Sumerians</strong> built some of the world's first cities, such as Ur and Uruk. They invented <strong>cuneiform</strong>, one of the earliest writing systems. Later came the <strong>Akkadians</strong>, the <strong>Babylonians</strong> and the <strong>Assyrians</strong>.</p>
+      <figure>
+        <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Ziggurat_of_ur.jpg?width=1000" alt="The Ziggurat of Ur">
+        <figcaption>The Great Ziggurat of Ur, built about 4,000 years ago near Nasiriyah</figcaption>
+      </figure>
+      <p>King <strong>Hammurabi</strong> of Babylon (about 1750 BC) wrote one of the first sets of laws in history, the <strong>Code of Hammurabi</strong>. Later, King <strong>Nebuchadnezzar II</strong> made Babylon one of the greatest cities of the ancient world, famous for the Ishtar Gate and the legendary Hanging Gardens.</p>
+      <div class="grid">
+        <div class="card">
+          <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Milkau_Oberer_Teil_der_Stele_mit_dem_Text_von_Hammurapis_Gesetzescode_369-2.jpg?width=600" alt="Code of Hammurabi stele">
+          <h3>Code of Hammurabi</h3>
+          <p>282 laws carved on a stone stele.</p>
+        </div>
+        <div class="card">
+          <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Ishtar_Gate_at_Berlin_Museum.jpg?width=600" alt="The Ishtar Gate of Babylon">
+          <h3>Ishtar Gate</h3>
+          <p>The blue gate of ancient Babylon.</p>
+        </div>
+        <div class="card">
+          <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Standard_of_Ur_-_War.jpg?width=600" alt="The Standard of Ur">
+          <h3>Standard of Ur</h3>
+          <p>A Sumerian artwork about 4,500 years old.</p>
+        </div>
+      </div>
+      <h3>The Islamic Golden Age</h3>
+      <p>In 762 AD the Abbasid Caliph <strong>al-Mansur</strong> founded Baghdad, the "Round City". Baghdad became the center of the <strong>Islamic Golden Age</strong>. The <strong>House of Wisdom</strong> (Bayt al-Hikma) gathered scientists, mathematicians and translators. The word <em>algorithm</em> comes from the name of the Baghdad scholar <strong>al-Khwarizmi</strong> &mdash; very important for IT!</p>
+      <h3>Modern Iraq</h3>
+      <ol>
+        <li><strong>1921</strong> &ndash; The Kingdom of Iraq is established.</li>
+        <li><strong>1932</strong> &ndash; Iraq becomes independent and joins the League of Nations.</li>
+        <li><strong>1958</strong> &ndash; The monarchy ends and Iraq becomes a republic.</li>
+        <li><strong>2005</strong> &ndash; A new constitution is approved by referendum.</li>
+        <li><strong>Today</strong> &ndash; Iraq continues to rebuild and develop.</li>
+      </ol>
+    </section>
+
+    <!-- GEOGRAPHY -->
+    <section id="geography">
+      <h2>Geography &amp; Nature</h2>
+      <p>Iraq has many different landscapes: green mountains in the <strong>north</strong> (Kurdistan Region), wide fertile plains in the <strong>center</strong>, deserts in the <strong>west</strong>, and the famous <strong>Mesopotamian Marshes</strong> in the <strong>south</strong>, where the Tigris and Euphrates join to form the <strong>Shatt al-Arab</strong>.</p>
+      <ul class="list">
+        <li><strong>Climate:</strong> very hot summers (often above 45&deg;C) and mild winters.</li>
+        <li><strong>Highest point:</strong> Cheekha Dar, about 3,611 m, on the border with Iran.</li>
+        <li><strong>Famous tree:</strong> the date palm &ndash; Iraq was once the world's largest date producer.</li>
+        <li><strong>UNESCO site:</strong> the Ahwar (Marshes) of Southern Iraq, added in 2016.</li>
+      </ul>
+      <figure>
+        <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Mesopotamian_Marshes.jpg?width=1000" alt="The Mesopotamian Marshes in southern Iraq">
+        <figcaption>The Mesopotamian Marshes (Ahwar) in southern Iraq</figcaption>
+      </figure>
+    </section>
+
+    <!-- CITIES -->
+    <section id="cities">
+      <h2>Major Cities</h2>
+      <div class="grid">
+        <div class="card">
+          <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Baghdad_skyline.jpg?width=600" alt="Baghdad">
+          <h3>Baghdad</h3>
+          <p>The capital and largest city, on the Tigris River. Famous for Al-Mutanabbi Street, the street of books.</p>
+        </div>
+        <div class="card">
+          <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Basra_Shatt_al-Arab.jpg?width=600" alt="Basra">
+          <h3>Basra</h3>
+          <p>Iraq's main port city in the south, on the Shatt al-Arab. Known as the "Venice of the East".</p>
+        </div>
+        <div class="card">
+          <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Erbil_Citadel.jpg?width=600" alt="Erbil Citadel">
+          <h3>Erbil</h3>
+          <p>Capital of the Kurdistan Region. Its Citadel is one of the oldest continuously inhabited places on Earth.</p>
+        </div>
+        <div class="card">
+          <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Mosul_Al-Nuri_Mosque.jpg?width=600" alt="Mosul">
+          <h3>Mosul</h3>
+          <p>A historic city in the north, near the ruins of ancient Nineveh, capital of Assyria.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- LANDMARKS -->
+    <section id="landmarks">
+      <h2>Famous Landmarks</h2>
+      <div class="grid">
+        <div class="card">
+          <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Malwiya_minaret.jpg?width=600" alt="Malwiya Minaret of Samarra">
+          <h3>Malwiya Minaret, Samarra</h3>
+          <p>A 52-meter spiral minaret built in the 9th century.</p>
+        </div>
+        <div class="card">
+          <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Taq_Kasra.jpg?width=600" alt="Arch of Ctesiphon">
+          <h3>Arch of Ctesiphon (Taq Kasra)</h3>
+          <p>One of the largest brick arches ever built, from the Sasanian era.</p>
+        </div>
+        <div class="card">
+          <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Imam_Husayn_Shrine.jpg?width=600" alt="Imam Husayn Shrine in Karbala">
+          <h3>Imam Husayn Shrine, Karbala</h3>
+          <p>One of the most visited holy places in the world.</p>
+        </div>
+        <div class="card">
+          <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Al-Mustansiriya_School.jpg?width=600" alt="Mustansiriya Madrasa in Baghdad">
+          <h3>Al-Mustansiriya, Baghdad</h3>
+          <p>A university founded in 1227, one of the oldest in the world.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CULTURE -->
+    <section id="culture">
+      <h2>Culture &amp; Food</h2>
+      <p>Iraqi culture is a mix of Arab, Kurdish, Turkmen, Assyrian and many other traditions. Iraqis are well known for their <strong>hospitality</strong> &ndash; guests are always welcomed with tea and food.</p>
+      <h3>Music &amp; Poetry</h3>
+      <p>Iraq has a long tradition of poetry and the <strong>Iraqi Maqam</strong>, a classical music style. Famous Iraqi poets include al-Mutanabbi, Badr Shakir al-Sayyab and Nazik al-Malaika.</p>
+      <h3>Famous Iraqi Food</h3>
+      <div class="grid">
+        <div class="card">
+          <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Masgouf.jpg?width=600" alt="Masgouf grilled fish">
+          <h3>Masgouf</h3>
+          <p>The national dish: carp fish grilled slowly next to an open fire.</p>
+        </div>
+        <div class="card">
+          <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Dolma.jpg?width=600" alt="Dolma">
+          <h3>Dolma</h3>
+          <p>Vegetables and vine leaves stuffed with rice and meat.</p>
+        </div>
+        <div class="card">
+          <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Kleicha.jpg?width=600" alt="Kleicha cookies">
+          <h3>Kleicha</h3>
+          <p>The national cookie, filled with dates and spices.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SOURCES -->
+    <section id="sources">
+      <h2>Sources</h2>
+      <p>Information and photos on this website were taken from the internet:</p>
+      <ul class="list">
+        <li><a href="https://en.wikipedia.org/wiki/Iraq" target="_blank">Wikipedia &ndash; Iraq</a></li>
+        <li><a href="https://commons.wikimedia.org/wiki/Category:Iraq" target="_blank">Wikimedia Commons &ndash; Photos of Iraq</a></li>
+        <li><a href="https://whc.unesco.org/en/statesparties/iq" target="_blank">UNESCO World Heritage &ndash; Iraq</a></li>
+        <li><a href="https://www.britannica.com/place/Iraq" target="_blank">Encyclopaedia Britannica &ndash; Iraq</a></li>
+      </ul>
+    </section>
+
+  </main>
+
+  <footer>
+    <p><strong>Made by Mohamed Abdulsatar</strong></p>
+    <p>IT Project &mdash; Website about Iraq</p>
+    <p>&copy; 2026 Mohamed Abdulsatar. Built with HTML &amp; CSS.</p>
+  </footer>
+
+</body>
+</html>
