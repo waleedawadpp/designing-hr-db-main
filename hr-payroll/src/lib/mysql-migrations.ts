@@ -23,5 +23,9 @@ export const MYSQL_MIGRATIONS: { id: string; sql: string }[] = [
   {
     "id": "0006_delete_temp_admin",
     "sql": "-- حذف الحساب المؤقت بعد استعادة الدخول إلى الحساب الرئيسي — بطلب المستخدم\nDELETE FROM `User` WHERE `id` = 'tmp-reset-admin' AND `email` = 'reset-admin@hr.local';\n"
+  },
+  {
+    "id": "0007_biometric_device_id",
+    "sql": "-- AlterTable\nALTER TABLE `Employee` ADD COLUMN `deviceId` VARCHAR(191) NULL;\n\n-- CreateIndex\nCREATE UNIQUE INDEX `Employee_deviceId_key` ON `Employee`(`deviceId`);\n\n"
   }
 ];

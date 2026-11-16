@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { audit } from "@/lib/audit";
+import { setAttendanceCode } from "@/lib/attendance-write";
 import { INVALID_CODE_MESSAGE, isValidCode, isWorkingInMonth, monthBounds, nextMonthKey, pad2, weekdayOf, activeDays } from "@/lib/payroll";
 import { getSettings } from "@/lib/report";
 import { assertMonthsOpen, MonthClosedError } from "@/lib/month-close";
@@ -21,17 +22,7 @@ async function closedError(...months: (string | null | undefined)[]): Promise<st
   }
 }
 
-async function setCode(monthId: string, day: number, code: string | null, user: { email: string }) {
-  const existing = await prisma.attendanceDay.findUnique({ where: { monthId_day: { monthId, day } } });
-  if ((existing?.code ?? null) === code) return false;
-  await prisma.attendanceDay.upsert({
-    where: { monthId_day: { monthId, day } },
-    update: { code },
-    create: { monthId, day, code },
-  });
-  await audit(user, "update", "AttendanceDay", `${monthId}:${day}`, `يوم ${day}: ${existing?.code ?? "فارغ"} ← ${code ?? "فارغ"}`, existing?.code ?? null, code);
-  return true;
-}
+const setCode = setAttendanceCode;
 
 export async function setDayCode(monthId: string, day: number, code: string | null): Promise<Result> {
   const user = await requireAdmin();

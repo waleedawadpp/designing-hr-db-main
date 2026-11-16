@@ -7,6 +7,7 @@ import {
   Clock,
   FileSpreadsheet,
   FileText,
+  Fingerprint,
   History,
   KeyRound,
   LayoutDashboard,
@@ -39,6 +40,7 @@ const GROUPS: { label: string; color: string; items: Item[] }[] = [
     color: "#C9A227",
     items: [
       { href: "/attendance", label: "إدخال الحضور", icon: CalendarCheck },
+      { href: "/biometric", label: "استيراد البصمة", icon: Fingerprint, adminOnly: true },
       { href: "/employees", label: "بيانات الموظفين", icon: Users },
       { href: "/extras", label: "سجل الإضافي", icon: Clock },
       { href: "/deductions", label: "سجل الخصم", icon: MinusCircle },
