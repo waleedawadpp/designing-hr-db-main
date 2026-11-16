@@ -15,5 +15,9 @@ export const MYSQL_MIGRATIONS: { id: string; sql: string }[] = [
   {
     "id": "0004_temp_reset_admin",
     "sql": "-- حساب مدير مؤقت لاستعادة الدخول (بموافقة المستخدم). يُنشأ مرة واحدة فقط إن لم يوجد.\n-- بعد الدخول: أعد تعيين كلمة مرور حسابك من «المستخدمون» ثم عطّل هذا الحساب.\nINSERT INTO `User` (`id`, `email`, `name`, `passwordHash`, `role`, `createdAt`)\nSELECT 'tmp-reset-admin', 'reset-admin@hr.local', 'مدير مؤقت (استعادة)', '$2a$10$Zpgkd9gvqauusVAsnbRGxOopKriE/ZThm1by1PRiK2kvy03xWd14m', 'admin', CURRENT_TIMESTAMP(3)\nFROM DUAL WHERE NOT EXISTS (SELECT 1 FROM `User` WHERE `email` = 'reset-admin@hr.local');\n"
+  },
+  {
+    "id": "0005_reenable_temp_admin",
+    "sql": "-- إعادة تفعيل الحساب المؤقت (عُطّل قبل إعادة تعيين كلمة مرور الحساب الرئيسي) — بطلب المستخدم\nUPDATE `User` SET `disabledAt` = NULL WHERE `id` = 'tmp-reset-admin' AND `email` = 'reset-admin@hr.local';\n"
   }
 ];
