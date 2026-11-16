@@ -19,5 +19,9 @@ export const MYSQL_MIGRATIONS: { id: string; sql: string }[] = [
   {
     "id": "0005_reenable_temp_admin",
     "sql": "-- إعادة تفعيل الحساب المؤقت (عُطّل قبل إعادة تعيين كلمة مرور الحساب الرئيسي) — بطلب المستخدم\nUPDATE `User` SET `disabledAt` = NULL WHERE `id` = 'tmp-reset-admin' AND `email` = 'reset-admin@hr.local';\n"
+  },
+  {
+    "id": "0006_delete_temp_admin",
+    "sql": "-- حذف الحساب المؤقت بعد استعادة الدخول إلى الحساب الرئيسي — بطلب المستخدم\nDELETE FROM `User` WHERE `id` = 'tmp-reset-admin' AND `email` = 'reset-admin@hr.local';\n"
   }
 ];
