@@ -41,15 +41,15 @@ function decodeXml(s: string) {
 // لا نعتمد على مكتبة لقراءة الخلايا: نقرأ القيم المحفوظة (<v>) كما هي، بما فيها نتيجة 0
 // للمعادلات، ونعمل مع ملفات حفظتها برامج غير Excel.
 
-type Raw = string | number | boolean | null;
+export type Raw = string | number | boolean | null;
 
-interface XSheet {
+export interface XSheet {
   name: string;
   cells: Map<string, Raw>; // "B6" → القيمة
   maxRow: number;
 }
 
-interface XBook {
+export interface XBook {
   sheets: Map<string, XSheet>;
   tables: Map<string, TableLoc>;
 }
@@ -62,7 +62,7 @@ function colLetters(n: number): string {
 
 const get = (sh: XSheet, r: number, c: number): Raw => sh.cells.get(`${colLetters(c)}${r}`) ?? null;
 
-async function loadBook(data: Uint8Array): Promise<XBook> {
+export async function loadBook(data: Uint8Array): Promise<XBook> {
   const zip = await JSZip.loadAsync(data);
   const read = async (p: string) => (await zip.file(p)?.async("string")) ?? "";
   const relTarget = (rels: string, id: string) => {
