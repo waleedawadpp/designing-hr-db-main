@@ -34,7 +34,8 @@ export function BiometricImport() {
 }
 
 function Preview({ state }: { state: Required<LoadState> }) {
-  const { log, employees, current, weeklyOffDay, closed } = state;
+  const { log, employees, current, weeklyOffDay, closed, holidays } = state;
+  const holidaySet = useMemo(() => new Set(holidays), [holidays]);
   const empById = useMemo(() => new Map(employees.map((e) => [e.id, e])), [employees]);
   const [mapping, setMapping] = useState<Record<string, string>>(() => {
     const m: Record<string, string> = {};
@@ -51,9 +52,9 @@ function Preview({ state }: { state: Required<LoadState> }) {
         .filter((d) => mapping[d.deviceId])
         .map((d) => {
           const emp = empById.get(mapping[d.deviceId])!;
-          return { device: d, emp, cells: planEmployee(emp, d.days, current[emp.id] ?? {}, log.start, log.end, weeklyOffDay) };
+          return { device: d, emp, cells: planEmployee(emp, d.days, current[emp.id] ?? {}, log.start, log.end, weeklyOffDay, holidaySet) };
         }),
-    [log, mapping, empById, current, weeklyOffDay],
+    [log, mapping, empById, current, weeklyOffDay, holidaySet],
   );
   const dates = rows[0]?.cells.map((c) => c.date) ?? [];
   const isClosed = (date: string) => closed.includes(date.slice(0, 7));
@@ -80,6 +81,12 @@ function Preview({ state }: { state: Required<LoadState> }) {
         return code === undefined ? [] : [{ employeeId: r.emp.id, date: c.date, code }];
       }),
   );
+  // أوقات الدوام: أول بصمة = دخول، وآخر بصمة = خروج (بصمة واحدة = دخول بلا خروج)
+  const times = rows.flatMap((r) =>
+    r.cells
+      .filter((c) => c.kind !== "inactive" && !isClosed(c.date) && c.times.length)
+      .map((c) => ({ employeeId: r.emp.id, date: c.date, checkIn: c.times[0], checkOut: c.times.length > 1 ? c.times[c.times.length - 1] : null })),
+  );
   const overwrites = rows.flatMap((r) => r.cells.filter((c) => c.kind === "overwrite" && !isClosed(c.date)).map((c) => ({ r, c })));
   const allOverwritesOn = overwrites.length > 0 && overwrites.every(({ r, c }) => choiceOf(r.emp.id, c) === c.proposed);
 
@@ -97,14 +104,14 @@ function Preview({ state }: { state: Required<LoadState> }) {
 
   function save() {
     setResult(null);
-    startSaving(async () => setResult(await applyPunchLog({ mapping, changes })));
+    startSaving(async () => setResult(await applyPunchLog({ mapping, changes, times })));
   }
 
   if (result?.ok) {
     return (
       <div className="space-y-2 rounded-lg border border-[#166534]/30 bg-[#DCFCE7] p-4 text-sm text-[#166534]" data-testid="bio-result">
         <div className="flex items-center gap-2 font-semibold">
-          <CheckCircle2 size={18} /> تم الاعتماد: {result.changed} خانة حضور، و{result.linked} ربط جديد بأرقام الجهاز.
+          <CheckCircle2 size={18} /> تم الاعتماد: {result.changed} خانة حضور، و{result.linked} ربط جديد بأرقام الجهاز، و{result.timesSaved} يوم دوام، منها {result.overtimeDays} يوم فيه إضافي.
         </div>
         <div>
           راجع وعدّل من{" "}
@@ -209,7 +216,7 @@ function Preview({ state }: { state: Required<LoadState> }) {
                 <tr>
                   <th className="sticky right-0 z-10 min-w-40 bg-navy px-2 py-1 text-right">الموظف</th>
                   {dates.map((d) => (
-                    <th key={d} className={cn("px-0.5 py-1 text-center font-normal", weekdayOf(d) === weeklyOffDay && "bg-[#334155]")}>
+                    <th key={d} className={cn("px-0.5 py-1 text-center font-normal", (weekdayOf(d) === weeklyOffDay || holidaySet.has(d)) && "bg-[#334155]")}>
                       <div className="font-bold">{Number(d.slice(8))}</div>
                       <div className="text-[10px] opacity-80">{WEEKDAYS[weekdayOf(d)]}</div>
                     </th>
@@ -298,7 +305,7 @@ function Preview({ state }: { state: Required<LoadState> }) {
         <button
           type="button"
           onClick={save}
-          disabled={saving || (changes.length === 0 && !mappingChanged(mapping, log, employees))}
+          disabled={saving || (changes.length === 0 && times.length === 0 && !mappingChanged(mapping, log, employees))}
           className="flex items-center gap-1 rounded bg-navy px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
           <CheckCircle2 size={16} color="#C9A227" /> {saving ? "جاري الحفظ…" : `اعتماد (${changes.length} تغيير)`}

@@ -17,13 +17,14 @@ const n3 = (v: number | null | undefined) => (v == null ? "" : fmtNumber3(v));
 const n2 = (v: number | null | undefined) => (v == null ? "" : v.toFixed(2));
 const s = (v: number | null | undefined) => (v == null ? "" : String(v));
 
-function StatusCell({ status, warning }: { status: LinkStatus; warning?: string | null }) {
+function StatusCell({ status, warning, fromTime }: { status: LinkStatus; warning?: string | null; fromTime?: boolean }) {
   if (status.kind === "empty") return <td className="calc" />;
   const ok = status.kind === "linked";
   return (
     <td className={cn("min-w-[200px] !whitespace-normal !text-xs font-semibold", ok ? "!bg-[#DCFCE7] !text-[#166534]" : "!bg-[#FEE2E2] !text-[#B91C1C]")} data-testid="link-status">
       {status.text}
       {warning && <div className="mt-0.5 rounded bg-[#FEF3C7] px-1 text-[#B45309]">{warning}</div>}
+      {fromTime && <div className="mt-0.5 rounded bg-[#DBEAFE] px-1 text-[#1D4ED8]" data-testid="from-time">⏱ من الدوام — يتحدّث تلقائيًا عند تعديل الوقت</div>}
     </td>
   );
 }
@@ -112,7 +113,7 @@ export function EntryLog({
             {isExtra ? (
               <tr>
                 <th>التاريخ</th><th>الاسم</th><th>البند</th><th>الوقت الفعلي (س.د)</th>
-                <th className="th-total">الساعات بالعشري</th><th className="th-total">الساعات المحتسبة ×1.5</th><th className="th-total">أجرة الساعة</th>
+                <th className="th-total">الساعات بالعشري</th><th className="th-total">الساعات المحتسبة × المعدل</th><th className="th-total">أجرة الساعة</th>
                 <th>مبلغ المكافأة</th><th className="th-total">المبلغ المستحق</th><th className="th-total">الرقم</th><th>ملاحظات</th><th className="th-total">حالة الربط</th>
                 {canEdit && <th className="no-print" />}
               </tr>
@@ -264,13 +265,13 @@ function EntryRow({
         {itemCell}
         {numInput("actualTime", x?.actualTime, "الوقت الفعلي", item !== "مكافأة")}
         <td className="calc num">{n2(x?.decimalHours)}</td>
-        <td className="calc num">{n2(x?.countedHours)}</td>
+        <td className="calc num">{n2(x?.countedHours)}{x?.rate ? <span className="text-xs text-slate-400"> ×{x.rate}</span> : null}</td>
         <td className="calc num">{n3(x?.hourlyRate)}</td>
         {numInput("bonusAmount", x?.bonusAmount, "مبلغ المكافأة", item !== "ساعات إضافية")}
         <td className="calc num font-semibold" data-testid="entry-amount">{n3(x?.amount)}</td>
         <td className="calc">{x?.code ?? ""}</td>
         {notesCell}
-        {x ? <StatusCell status={x.status} warning={x.warning} /> : <td className="calc" />}
+        {x ? <StatusCell status={x.status} warning={x.warning} fromTime={x.fromTime} /> : <td className="calc" />}
         {del}
       </tr>
     );

@@ -7,7 +7,8 @@ import { setAttendanceCode } from "@/lib/attendance-write";
 import { readSheetRows, NotXlsxError } from "@/lib/biometric-xlsx";
 import { BiometricFormatError, datesBetween, parsePunchLog, type PunchLog } from "@/lib/biometric";
 import { INVALID_CODE_MESSAGE, isValidCode, isWorkingInMonth } from "@/lib/payroll";
-import { getSettings } from "@/lib/report";
+import { getHolidays, getSettings } from "@/lib/report";
+import { saveTime, TimeInputError, TIME_SOURCE_DEVICE } from "@/lib/time-sync";
 import { closedMonths } from "@/lib/month-close";
 
 export interface BioEmployee {
@@ -28,6 +29,8 @@ export interface LoadState {
   current?: Record<string, Record<string, string>>;
   weeklyOffDay?: number;
   closed?: string[];
+  /** الإجازات الرسمية في فترة التقرير */
+  holidays?: string[];
 }
 
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -67,6 +70,7 @@ export async function loadPunchLog(_prev: LoadState, form: FormData): Promise<Lo
     current,
     weeklyOffDay: settings.weeklyOffDay,
     closed: closed.filter((m) => months.includes(m)),
+    holidays: [...(await getHolidays(prisma, log.start, log.end))],
   };
 }
 
@@ -74,9 +78,13 @@ export interface ApplyInput {
   /** رقم الجهاز ← معرّف الموظف (فارغ = بلا ربط) */
   mapping: Record<string, string>;
   changes: { employeeId: string; date: string; code: string | null }[];
+  /** أوقات الدخول والخروج لكل يوم فيه بصمة */
+  times?: { employeeId: string; date: string; checkIn: string; checkOut: string | null }[];
 }
 
-export type ApplyResult = { ok: true; changed: number; linked: number; months: string[] } | { ok: false; error: string };
+export type ApplyResult =
+  | { ok: true; changed: number; linked: number; months: string[]; timesSaved: number; overtimeDays: number }
+  | { ok: false; error: string };
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -88,7 +96,9 @@ export async function applyPunchLog(input: ApplyInput): Promise<ApplyResult> {
     if (!DATE.test(c.date)) return { ok: false, error: `تاريخ غير صحيح: ${c.date}` };
     if (c.code !== null && !isValidCode(c.code)) return { ok: false, error: INVALID_CODE_MESSAGE };
   }
-  const months = [...new Set(changes.map((c) => c.date.slice(0, 7)))].sort();
+  const times = input.times ?? [];
+  for (const t of times) if (!DATE.test(t.date)) return { ok: false, error: `تاريخ غير صحيح: ${t.date}` };
+  const months = [...new Set([...changes, ...times].map((c) => c.date.slice(0, 7)))].sort();
   const closed = (await closedMonths(prisma)).filter((m) => months.includes(m));
   if (closed.length) return { ok: false, error: `شهر ${closed.join("، ")} معتمد ومقفل — أعد فتحه من «الكشف الشهري» قبل الاستيراد` };
 
@@ -141,6 +151,23 @@ export async function applyPunchLog(input: ApplyInput): Promise<ApplyResult> {
     if (!monthId) continue;
     if (await setAttendanceCode(monthId, Number(c.date.slice(8)), c.code, user)) changed++;
   }
+
+  // 3) أوقات الدوام والإضافي التلقائي (لا يُستبدل وقت أدخله المدير يدويًا)
+  const [settings, holidays] = await Promise.all([getSettings(prisma), getHolidays(prisma)]);
+  let timesSaved = 0;
+  let overtimeDays = 0;
+  for (const t of times) {
+    const emp = byId.get(t.employeeId);
+    if (!emp || (emp.hireDate && t.date < emp.hireDate) || (emp.endDate && t.date > emp.endDate)) continue;
+    try {
+      const r = await saveTime(user, { ...t, source: TIME_SOURCE_DEVICE }, { keepManual: true, settings, holidays });
+      if (r.changed) timesSaved++;
+      if (r.entry && (await prisma.extraEntry.count({ where: { timeEntryId: r.entry.id, deletedAt: null } }))) overtimeDays++;
+    } catch (e) {
+      if (e instanceof TimeInputError) continue; // بصمة بوقت غير مفهوم: تُتجاهل
+      throw e;
+    }
+  }
   revalidatePath("/", "layout");
-  return { ok: true, changed, linked, months };
+  return { ok: true, changed, linked, months, timesSaved, overtimeDays };
 }

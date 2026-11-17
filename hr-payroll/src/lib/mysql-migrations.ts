@@ -27,5 +27,9 @@ export const MYSQL_MIGRATIONS: { id: string; sql: string }[] = [
   {
     "id": "0007_biometric_device_id",
     "sql": "-- AlterTable\nALTER TABLE `Employee` ADD COLUMN `deviceId` VARCHAR(191) NULL;\n\n-- CreateIndex\nCREATE UNIQUE INDEX `Employee_deviceId_key` ON `Employee`(`deviceId`);\n\n"
+  },
+  {
+    "id": "0008_time_tracking",
+    "sql": "-- AlterTable\nALTER TABLE `ExtraEntry` ADD COLUMN `rateKind` VARCHAR(191) NULL,\n    ADD COLUMN `timeEntryId` VARCHAR(191) NULL;\n\n-- AlterTable\nALTER TABLE `Settings` ADD COLUMN `holidayRate` DOUBLE NOT NULL DEFAULT 1.5,\n    ADD COLUMN `overtimeRate` DOUBLE NOT NULL DEFAULT 1.5,\n    ADD COLUMN `standardHours` DOUBLE NOT NULL DEFAULT 9;\n\n-- CreateTable\nCREATE TABLE `TimeEntry` (\n    `id` VARCHAR(191) NOT NULL,\n    `employeeId` VARCHAR(191) NOT NULL,\n    `date` VARCHAR(191) NOT NULL,\n    `checkIn` VARCHAR(191) NULL,\n    `checkOut` VARCHAR(191) NULL,\n    `source` VARCHAR(191) NOT NULL,\n    `notes` TEXT NULL,\n    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),\n    `updatedAt` DATETIME(3) NOT NULL,\n\n    INDEX `TimeEntry_date_idx`(`date`),\n    UNIQUE INDEX `TimeEntry_employeeId_date_key`(`employeeId`, `date`),\n    PRIMARY KEY (`id`)\n) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\n\n-- CreateTable\nCREATE TABLE `Holiday` (\n    `date` VARCHAR(191) NOT NULL,\n    `name` VARCHAR(191) NOT NULL,\n\n    PRIMARY KEY (`date`)\n) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\n\n-- CreateIndex\nCREATE UNIQUE INDEX `ExtraEntry_timeEntryId_key` ON `ExtraEntry`(`timeEntryId`);\n\n-- AddForeignKey\nALTER TABLE `TimeEntry` ADD CONSTRAINT `TimeEntry_employeeId_fkey` FOREIGN KEY (`employeeId`) REFERENCES `Employee`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;\n\n"
   }
 ];

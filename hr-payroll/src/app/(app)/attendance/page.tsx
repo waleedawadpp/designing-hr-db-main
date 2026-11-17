@@ -81,6 +81,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
         page={page}
         pageCount={Math.max(1, Math.ceil(monthList.length / MONTHS_PER_PAGE))}
         weeklyOffDay={settings.weeklyOffDay}
+        holidays={(await prisma.holiday.findMany({ select: { date: true } })).map((h) => h.date)}
         canEdit={user?.role === "admin"}
         nextMonth={nextMonth}
         nextMonthLabel={formatMonth(nextMonth)}
