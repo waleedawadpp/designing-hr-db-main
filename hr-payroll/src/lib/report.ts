@@ -34,9 +34,22 @@ export interface MonthlyReport {
   /** عدد "ح" لكل يوم: الكل، والموظفون، والسواق */
   presentPerDay: { all: number; employees: number; drivers: number }[];
   extrasCount: number;
+  /** الشهر معتمد: النتيجة من لقطة وقت الاعتماد */
+  closed?: { at: string; by: string };
 }
 
-export async function buildMonthlyReport(db: PrismaClient, ym: string): Promise<MonthlyReport> {
+/**
+ * كشف الشهر. إن كان الشهر معتمدًا تُعاد اللقطة المحفوظة وقت الاعتماد كما هي
+ * (فلا يغيّرها تعديل راتب أو إعدادات لاحقًا). live = true يحسب من البيانات الحالية دائمًا.
+ */
+export async function buildMonthlyReport(db: PrismaClient, ym: string, opts: { live?: boolean } = {}): Promise<MonthlyReport> {
+  if (!opts.live) {
+    const closed = await db.monthClose.findUnique({ where: { month: ym } });
+    if (closed) {
+      const snap = JSON.parse(closed.snapshot) as MonthlyReport;
+      return { ...snap, closed: { at: closed.closedAt.toISOString(), by: closed.closedBy } };
+    }
+  }
   const { start, end, days } = monthBounds(ym);
   const { year } = parseMonthKey(ym);
   const settings = await getSettings(db);

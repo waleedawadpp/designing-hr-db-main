@@ -38,6 +38,7 @@ export function EntryLog({
   rows,
   employees,
   canEdit,
+  closedMonths,
 }: {
   kind: EntryKind;
   ym: string;
@@ -48,6 +49,7 @@ export function EntryLog({
   rows: View[];
   employees: ComboOption[];
   canEdit: boolean;
+  closedMonths: string[];
 }) {
   const router = useRouter();
   const path = usePathname();
@@ -97,6 +99,11 @@ export function EntryLog({
         </span>
         <span className="ms-auto text-sm" aria-live="polite">{saved && <span className="text-[#166534]">✔ تم الحفظ</span>}</span>
       </div>
+      {ym !== "all" && closedMonths.includes(ym) && (
+        <div className="rounded border border-[#166534]/30 bg-[#DCFCE7] px-3 py-2 text-sm font-semibold text-[#166534]">
+          🔒 شهر {ym.slice(5)}/{ym.slice(0, 4)} معتمد ومقفل — أسطره للقراءة فقط.
+        </div>
+      )}
       {error && <div role="alert" className="rounded border border-[#B91C1C] bg-[#FEE2E2] px-3 py-2 text-sm font-semibold text-[#B91C1C]">{error}</div>}
 
       <div className="overflow-auto rounded-lg border border-line bg-white">
@@ -125,7 +132,7 @@ export function EntryLog({
                 ym={ym === "all" ? undefined : ym}
                 v={v}
                 employees={employees}
-                canEdit={canEdit}
+                canEdit={canEdit && !(v?.date && closedMonths.includes(v.date.slice(0, 7)))}
                 onCommit={commit}
                 onDelete={remove}
               />

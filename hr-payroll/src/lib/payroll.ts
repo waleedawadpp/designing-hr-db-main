@@ -33,6 +33,8 @@ export interface EmployeeLike {
   hireDate?: string | null;
   endDate?: string | null;
   leavesBeforeSystem?: number | null;
+  /** رصيد إجازة سنوي خاص بالموظف؛ فارغ = رصيد الإعدادات */
+  annualLeave?: number | null;
 }
 
 export interface PayrollSettings {
@@ -300,8 +302,13 @@ export function yearLeaves(leaveCountInYear: number, emp: Pick<EmployeeLike, "le
   return leaveCountInYear + (year === settings.systemStartYear ? emp.leavesBeforeSystem ?? 0 : 0);
 }
 
-export function remainingLeave(taken: number, settings: PayrollSettings): number {
-  return settings.annualLeaveEntitlement - taken;
+/** الرصيد السنوي للموظف: الخاص به إن وُجد، وإلا رصيد الإعدادات. */
+export function leaveEntitlement(emp: Pick<EmployeeLike, "annualLeave"> | null | undefined, settings: PayrollSettings): number {
+  return emp?.annualLeave ?? settings.annualLeaveEntitlement;
+}
+
+export function remainingLeave(taken: number, settings: PayrollSettings, emp?: Pick<EmployeeLike, "annualLeave"> | null): number {
+  return leaveEntitlement(emp, settings) - taken;
 }
 
 // ───────────────────────── 3.9 نسبة الحضور (على أيام العمل بدون يوم العطلة) ─────────────────────────
@@ -369,7 +376,7 @@ export function computeMonthlyRow(input: MonthlyInput): MonthlyRow {
     workingDays: workingDaysInMonth(input.ym, settings.weeklyOffDay),
     rate: attendanceRate(counts.present, input.ym, settings.weeklyOffDay),
     yearLeaves: yl,
-    leaveRemaining: remainingLeave(yl, settings),
+    leaveRemaining: remainingLeave(yl, settings, input.employee),
   };
 }
 
@@ -383,9 +390,10 @@ export function fmtNumber3(v: number): string {
   return fmt3.format(Object.is(Math.round(v * 1000), -0) ? 0 : v);
 }
 
-/** "ر.ع. 1,234.567" */
+/** "ر.ع. 1,234.567" — القيمة السالبة تُعزل باتجاه LTR حتى تظهر إشارة السالب قبل الرقم في الواجهة العربية. */
 export function formatOMR(v: number): string {
-  return `ر.ع. ${fmtNumber3(v)}`;
+  const n = fmtNumber3(v);
+  return n.startsWith("-") ? `ر.ع. \u2066${n}\u2069` : `ر.ع. ${n}`;
 }
 
 export function formatInt(v: number): string {

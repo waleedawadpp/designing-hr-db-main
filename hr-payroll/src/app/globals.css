@@ -71,3 +71,11 @@ html, body {
   .fit-print .col-leave { width: 22px; }
   .fit-print .wd { font-size: 5px; }
 }
+
+/* قسائم الرواتب: قسيمة في كل صفحة A4 عمودية */
+@media print {
+  .payslip { page-break-after: always; break-after: page; box-shadow: none; }
+  .payslip:last-child { page-break-after: auto; break-after: auto; }
+}
+@page payslip { size: A4 portrait; margin: 10mm; }
+@media print { .payslip { page: payslip; } }

@@ -2,6 +2,7 @@
 import { prisma } from "./db";
 import { isWorkingInMonth, monthBounds } from "./payroll";
 import { decorateDeductions, decorateExtras, UNLINKED_WHERE } from "./entries";
+import { closedMonths } from "./month-close";
 
 export const PAGE_SIZE = 50;
 
@@ -28,5 +29,5 @@ export async function loadEntries(kind: "extra" | "deduction", ym: string | "all
     kind === "extra"
       ? await decorateExtras(prisma, rows as Parameters<typeof decorateExtras>[1])
       : await decorateDeductions(prisma, rows as Parameters<typeof decorateDeductions>[1]);
-  return { total, unlinked, rows: views, employees, pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
+  return { total, unlinked, rows: views, employees, pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)), closedMonths: await closedMonths(prisma) };
 }

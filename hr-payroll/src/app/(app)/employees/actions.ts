@@ -15,6 +15,7 @@ export interface EmployeeInput {
   hireDate: string | null;
   endDate: string | null;
   leavesBeforeSystem: string;
+  annualLeave: string;
   notes: string;
 }
 
@@ -39,10 +40,12 @@ export async function saveEmployee(id: string | null, input: EmployeeInput): Pro
   const wage = num(input.dailyWage);
   const hours = num(input.dailyHours);
   const before = num(input.leavesBeforeSystem);
+  const leave = num(input.annualLeave ?? "");
   if (salary === "bad") errors.monthlySalary = "رقم غير صحيح";
   if (wage === "bad") errors.dailyWage = "رقم غير صحيح";
   if (hours === "bad" || hours === 0) errors.dailyHours = "رقم أكبر من صفر";
   if (before === "bad") errors.leavesBeforeSystem = "رقم غير صحيح";
+  if (leave === "bad" || (typeof leave === "number" && (!Number.isInteger(leave) || leave > 365))) errors.annualLeave = "عدد أيام صحيح (0–365)";
   if (input.type === "موظف" && salary === null) errors.monthlySalary = "الراتب مطلوب للموظف";
   if (input.type === "سائق يومي" && wage === null) errors.dailyWage = "الأجرة اليومية مطلوبة للسائق";
   if (input.hireDate && !isValidDate(input.hireDate)) errors.hireDate = "تاريخ غير صحيح (من 01/01/2020)";
@@ -69,6 +72,7 @@ export async function saveEmployee(id: string | null, input: EmployeeInput): Pro
     hireDate: input.hireDate || null,
     endDate: input.endDate || null,
     leavesBeforeSystem: before as number | null,
+    annualLeave: leave as number | null,
     notes: input.notes.trim() || null,
   };
 

@@ -292,6 +292,10 @@ describe("3.8 إجازات السنة والرصيد", () => {
   it("المتبقي = 30 − المسحوب", () => {
     expect(remainingLeave(10, DEFAULT_SETTINGS)).toBe(20);
   });
+  it("رصيد خاص بالموظف يتقدّم على رصيد الإعدادات", () => {
+    expect(remainingLeave(10, DEFAULT_SETTINGS, { annualLeave: 21 })).toBe(11);
+    expect(remainingLeave(10, DEFAULT_SETTINGS, { annualLeave: null })).toBe(20);
+  });
 });
 
 describe("3.9 نسبة الحضور على أيام العمل بدون الجمعة", () => {
@@ -329,6 +333,7 @@ describe("العرض والتواريخ", () => {
     expect(formatOMR(1234.5671)).toBe("ر.ع. 1,234.567");
     expect(formatOMR(0)).toBe("ر.ع. 0.000");
     expect(formatOMR(-0.0001)).toBe("ر.ع. 0.000");
+    expect(formatOMR(-16.129)).toBe("ر.ع. \u2066-16.129\u2069");
   });
   it("التاريخ والشهر", () => {
     expect(formatDate("2026-11-05")).toBe("05/11/2026");

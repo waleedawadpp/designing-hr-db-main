@@ -24,6 +24,10 @@ async function main() {
     ["05-extras", `/extras?${Q}`],
     ["06-deductions", `/deductions?${Q}`],
     ["07-leave-form", `/leave-form?y=2026`],
+    ["11-payslip", `/payslip?${Q}`],
+    ["12-users", `/users`],
+    ["13-settings", `/settings`],
+    ["14-account", `/account`],
   ];
   for (const [name, url] of shots) {
     await page.goto(BASE + url);
@@ -56,6 +60,21 @@ async function main() {
   await page.pdf({ path: `${OUT}/monthly-${Q.replace(/\W+/g, "-")}.pdf`, format: "A4", landscape: true, printBackground: true });
   await page.emulateMedia({ media: "screen" });
   console.log("✔ 10-monthly-print");
+
+  // الجوال
+  const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, locale: "ar", deviceScaleFactor: 2 });
+  await phone.context().addCookies(await page.context().cookies());
+  for (const [name, url] of [["20-mobile-dashboard", `/?${Q}`], ["21-mobile-attendance", "/attendance"], ["22-mobile-payslip", `/payslip?${Q}`]] as const) {
+    await phone.goto(BASE + url);
+    await phone.waitForLoadState("networkidle");
+    await phone.waitForTimeout(500);
+    await phone.screenshot({ path: `${OUT}/${name}.png` });
+    console.log("✔", name);
+  }
+  await phone.getByRole("button", { name: "فتح القائمة" }).click();
+  await phone.waitForTimeout(300);
+  await phone.screenshot({ path: `${OUT}/23-mobile-menu.png` });
+  console.log("✔ 23-mobile-menu");
 
   await browser.close();
 }

@@ -5,6 +5,7 @@ import { isWorkingInMonth, formatMonth } from "@/lib/payroll";
 import { AttendanceGrid, type GridRow } from "@/components/attendance/attendance-grid";
 import { ExportButtons } from "@/components/export-buttons";
 import { getNextMonth } from "./actions";
+import { closedMonths } from "@/lib/month-close";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   });
 
   const nextMonth = await getNextMonth();
+  const closed = await closedMonths(prisma);
   const employees = await prisma.employee.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] });
   const existingNext = new Set(
     (await prisma.attendanceMonth.findMany({ where: { month: nextMonth, deletedAt: null }, select: { employeeId: true } })).map((r) => r.employeeId),
@@ -83,6 +85,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
         nextMonth={nextMonth}
         nextMonthLabel={formatMonth(nextMonth)}
         preview={preview}
+        closedMonths={closed}
       />
     </div>
   );

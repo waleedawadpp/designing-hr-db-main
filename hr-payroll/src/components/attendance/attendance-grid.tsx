@@ -31,6 +31,7 @@ export function AttendanceGrid({
   nextMonth,
   nextMonthLabel,
   preview,
+  closedMonths,
 }: {
   rows: GridRow[];
   monthList: string[];
@@ -42,6 +43,7 @@ export function AttendanceGrid({
   nextMonth: string;
   nextMonthLabel: string;
   preview: string[];
+  closedMonths: string[];
 }) {
   const router = useRouter();
   const path = usePathname();
@@ -63,7 +65,10 @@ export function AttendanceGrid({
     return () => clearTimeout(t);
   }, [error]);
 
+  const closedSet = new Set(closedMonths);
   const isLocked = useCallback((row: GridRow, c: number) => c + 1 > daysInMonth(+row.month.slice(0, 4), +row.month.slice(5, 7)), []);
+  /** الشهر معتمد: السطر للقراءة فقط */
+  const rowClosed = (row: GridRow) => closedSet.has(row.month);
 
   async function run<T extends { ok: boolean; error?: string }>(p: Promise<T>): Promise<T> {
     pendingSaves.current++;
@@ -85,7 +90,7 @@ export function AttendanceGrid({
 
   function setCell(r: number, c: number, code: string | null) {
     const row = rows[r];
-    if (!canEdit || !row || isLocked(row, c)) return;
+    if (!canEdit || !row || isLocked(row, c) || rowClosed(row)) return;
     if (code !== null && !(CODES as readonly string[]).includes(code)) {
       setError(INVALID_CODE_MESSAGE);
       return;
@@ -124,7 +129,7 @@ export function AttendanceGrid({
   }
 
   function openMenu(el: HTMLElement, r: number, c: number) {
-    if (!canEdit || isLocked(rows[r], c)) return;
+    if (!canEdit || isLocked(rows[r], c) || rowClosed(rows[r])) return;
     const b = el.getBoundingClientRect();
     const MENU_H = 44, MENU_W = 260;
     // يُفتح فوق الخانة إن لم تتسع الشاشة أسفلها
@@ -138,7 +143,7 @@ export function AttendanceGrid({
   }
 
   const focusedRow = rows[focus.r];
-  const singleMonth = selected !== "all" ? selected : null;
+  const singleMonth = selected !== "all" && !closedSet.has(selected) ? selected : null;
 
   return (
     <div className="space-y-3">
@@ -169,7 +174,7 @@ export function AttendanceGrid({
               <CheckCheck size={16} color="#C9A227" /> تعبئة الكل حاضر لهذا اليوم ({focus.c + 1})
             </button>
             <button
-              disabled={pending || !focusedRow}
+              disabled={pending || !focusedRow || rowClosed(focusedRow)}
               onClick={() => startTransition(async () => { const r = await run(fillEmployeePresent(focusedRow!.id)); if (r.ok) router.refresh(); })}
               className="flex items-center gap-1 rounded border border-gold bg-cream px-2 py-1 text-sm disabled:opacity-50"
               title="أيام العمل بدون الجمعة — الخانات الفارغة فقط"
@@ -188,6 +193,11 @@ export function AttendanceGrid({
         </span>
       </div>
 
+      {selected !== "all" && closedSet.has(selected) && (
+        <div className="flex items-center gap-2 rounded border border-[#166534]/30 bg-[#DCFCE7] px-3 py-2 text-sm font-semibold text-[#166534]">
+          🔒 شهر {formatMonth(selected)} معتمد ومقفل — للقراءة فقط. إعادة الفتح من «الكشف الشهري».
+        </div>
+      )}
       {error && (
         <div role="alert" className="rounded border border-[#B91C1C] bg-[#FEE2E2] px-3 py-2 text-sm font-semibold text-[#B91C1C]">{error}</div>
       )}
@@ -222,9 +232,9 @@ export function AttendanceGrid({
         <table className="tbl" data-testid="attendance-grid">
           <thead>
             <tr>
-              <th>الشهر</th>
-              <th className="sticky right-0 z-[3] min-w-[70px]">الرقم</th>
-              <th className="sticky right-[70px] z-[3] min-w-[170px]">الاسم</th>
+              <th className="hidden sm:table-cell">الشهر</th>
+              <th className="sticky right-0 z-[3] hidden min-w-[70px] sm:table-cell">الرقم</th>
+              <th className="sticky right-0 z-[3] min-w-[120px] sm:right-[70px] sm:min-w-[170px]">الاسم</th>
               {Array.from({ length: 31 }, (_, i) => (
                 <th key={i} className={cn("w-8 min-w-8 !px-0 text-center", focus.c === i && "!bg-navy-2")}>{i + 1}</th>
               ))}
@@ -250,9 +260,9 @@ export function AttendanceGrid({
                     <tr aria-hidden><td colSpan={42} className="!bg-gold !p-0" style={{ height: 3 }} /></tr>
                   )}
                   <tr className={dupCls} data-testid={`grid-row-${row.code}`}>
-                    <td className="calc">{formatMonth(row.month)}</td>
-                    <td className="sticky right-0 z-[1] calc">{row.code}</td>
-                    <td className="sticky right-[70px] z-[1] calc font-medium" title={row.duplicate ? "سطر مكرر لنفس الموظف في نفس الشهر" : undefined}>{row.name}</td>
+                    <td className="calc hidden sm:table-cell">{formatMonth(row.month)}</td>
+                    <td className="sticky right-0 z-[1] calc hidden sm:table-cell">{row.code}</td>
+                    <td className="sticky right-0 z-[1] calc font-medium sm:right-[70px]" title={row.duplicate ? "سطر مكرر لنفس الموظف في نفس الشهر" : undefined}>{row.name}</td>
                     {row.days.map((code, c) => {
                       const locked = isLocked(row, c);
                       const fri = !locked && weekdayOf(`${row.month}-${pad2(c + 1)}`) === weeklyOffDay;
@@ -264,7 +274,7 @@ export function AttendanceGrid({
                               type="button"
                               aria-label={`${row.name} يوم ${c + 1}`}
                               data-day={c + 1}
-                              className={cn("h-7 w-8 text-[15px] font-bold outline-none focus:ring-2 focus:ring-inset focus:ring-gold", !canEdit && "cursor-default")}
+                              className={cn("h-7 w-8 text-[15px] font-bold outline-none focus:ring-2 focus:ring-inset focus:ring-gold", (!canEdit || rowClosed(row)) && "cursor-default")}
                               onFocus={() => setFocus({ r, c })}
                               onClick={(e) => openMenu(e.currentTarget, r, c)}
                               onKeyDown={(e) => onKey(e, r, c)}
@@ -285,8 +295,8 @@ export function AttendanceGrid({
                         aria-label={`ملاحظات ${row.name}`}
                         className="inp py-1"
                         defaultValue={row.notes}
-                        readOnly={!canEdit}
-                        onBlur={(e) => { if (canEdit && e.target.value !== row.notes) run(setMonthNotes(row.id, e.target.value)); }}
+                        readOnly={!canEdit || rowClosed(row)}
+                        onBlur={(e) => { if (canEdit && !rowClosed(row) && e.target.value !== row.notes) run(setMonthNotes(row.id, e.target.value)); }}
                       />
                     </td>
                   </tr>
