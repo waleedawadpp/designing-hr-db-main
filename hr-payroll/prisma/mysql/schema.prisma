@@ -13,36 +13,37 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String    @id @default(cuid())
+  email        String    @unique
   name         String
   passwordHash String
   role         String // "admin" مدير | "viewer" مشاهد
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
   disabledAt   DateTime?
 }
 
 model Employee {
-  id                 String    @id @default(cuid())
-  code               String    @unique
-  name               String    @unique
+  id                 String   @id @default(cuid())
+  code               String   @unique
+  name               String   @unique
   type               String // "موظف" | "سائق يومي"
   monthlySalary      Float?
   dailyWage          Float?
-  dailyHours         Float     @default(9)
+  dailyHours         Float    @default(9)
   hireDate           String?
   endDate            String?
   leavesBeforeSystem Float?
   annualLeave        Int? // رصيد إجازة سنوي خاص بالموظف (فارغ = رصيد الإعدادات)
-  deviceId           String?   @unique // رقم الموظف في جهاز البصمة (لاستيراد سجل الحركات)
+  deviceId           String?  @unique // رقم الموظف في جهاز البصمة (لاستيراد سجل الحركات)
   notes              String? @db.Text
-  sortOrder          Int       @default(0)
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  sortOrder          Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   months     AttendanceMonth[]
   extras     ExtraEntry[]
   deductions DeductionEntry[]
+  times      TimeEntry[]
 }
 
 model AttendanceMonth {
@@ -85,6 +86,8 @@ model ExtraEntry {
   actualTime  Float?
   bonusAmount Float?
   notes       String? @db.Text
+  rateKind    String? // "عطلة" = يُحسب بمعدل العطلات؛ فارغ = معدل الإضافي العادي
+  timeEntryId String?   @unique // سطر محسوب تلقائيًا من أوقات الدوام
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
@@ -93,6 +96,30 @@ model ExtraEntry {
 
   @@index([employeeId, date])
   @@index([date])
+}
+
+// أوقات الدخول والخروج لكل موظف في كل يوم (من جهاز البصمة أو يدويًا)
+model TimeEntry {
+  id         String   @id @default(cuid())
+  employeeId String
+  date       String // YYYY-MM-DD
+  checkIn    String? // HH:MM
+  checkOut   String? // HH:MM
+  source     String // "بصمة" | "يدوي"
+  notes      String? @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, date])
+  @@index([date])
+}
+
+// الإجازات الرسمية (مدفوعة، لا تُعد غيابًا، والعمل فيها كله إضافي بمعدل العطلات)
+model Holiday {
+  date String @id // YYYY-MM-DD
+  name String
 }
 
 model DeductionEntry {
@@ -104,6 +131,7 @@ model DeductionEntry {
   lateMinutes Float?
   amount      Float?
   notes       String? @db.Text
+  timeEntryId String?   @unique // خصم نقص محسوب تلقائيًا من أوقات الدوام
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
@@ -115,10 +143,15 @@ model DeductionEntry {
 }
 
 model Settings {
-  id                     Int @id @default(1)
-  systemStartYear        Int @default(2026)
-  weeklyOffDay           Int @default(5) // 0=الأحد … 5=الجمعة
-  annualLeaveEntitlement Int @default(30)
+  id                     Int   @id @default(1)
+  systemStartYear        Int   @default(2026)
+  weeklyOffDay           Int   @default(5) // 0=الأحد … 5=الجمعة
+  annualLeaveEntitlement Int   @default(30)
+  standardHours          Float @default(9) // ساعات الدوام الرسمية اليومية — ما بعدها إضافي
+  overtimeRate           Float @default(1.5) // معدل الساعة الإضافية في الأيام العادية (1.25 أو 1.5)
+  holidayRate            Float @default(1.5) // معدل ساعات العمل في العطلة الأسبوعية والإجازات الرسمية
+  shortDeduction         Boolean @default(true) // خصم التأخير/الخروج المبكر تلقائيًا (نقص عن ساعات الدوام)
+  graceMinutes           Int   @default(15) // مهلة السماح: النقص الذي لا يتجاوزها لا يُخصم
 }
 
 model AuditLog {

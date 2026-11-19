@@ -3,6 +3,7 @@ import { prisma } from "./db";
 import { isWorkingInMonth, monthBounds } from "./payroll";
 import { decorateDeductions, decorateExtras, UNLINKED_WHERE } from "./entries";
 import { closedMonths } from "./month-close";
+import { getSettings } from "./report";
 
 export const PAGE_SIZE = 50;
 
@@ -27,7 +28,7 @@ export async function loadEntries(kind: "extra" | "deduction", ym: string | "all
     .map((e) => ({ value: e.id, label: e.name }));
   const views =
     kind === "extra"
-      ? await decorateExtras(prisma, rows as Parameters<typeof decorateExtras>[1])
+      ? await decorateExtras(prisma, rows as Parameters<typeof decorateExtras>[1], await getSettings(prisma))
       : await decorateDeductions(prisma, rows as Parameters<typeof decorateDeductions>[1]);
   return { total, unlinked, rows: views, employees, pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)), closedMonths: await closedMonths(prisma) };
 }

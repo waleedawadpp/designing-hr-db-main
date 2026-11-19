@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { buildMonthlyReport } from "@/lib/report";
+import { buildMonthlyReport, getSettings } from "@/lib/report";
 import { decorateDeductions, decorateExtras } from "@/lib/entries";
 import { countCodes, employeeStatus, formatDate, formatMonth, monthBounds } from "@/lib/payroll";
 import { currentMonthKey, todayISO } from "@/lib/utils";
@@ -74,10 +74,10 @@ async function build(table: string, sp: URLSearchParams): Promise<Sheet> {
       const where = validYM(v) ? { deletedAt: null, date: { gte: monthBounds(v!).start, lte: monthBounds(v!).end } } : { deletedAt: null };
       const args = { where, include: { employee: true }, orderBy: [{ date: "asc" as const }] };
       if (table === "extras") {
-        const rows = await decorateExtras(prisma, await prisma.extraEntry.findMany(args));
+        const rows = await decorateExtras(prisma, await prisma.extraEntry.findMany(args), await getSettings(prisma));
         return {
           title: "سجل الإضافي",
-          headers: ["التاريخ", "الاسم", "البند", "الوقت الفعلي (س.د)", "الساعات بالعشري", "الساعات المحتسبة ×1.5", "أجرة الساعة", "مبلغ المكافأة", "المبلغ المستحق", "الرقم", "ملاحظات", "حالة الربط"],
+          headers: ["التاريخ", "الاسم", "البند", "الوقت الفعلي (س.د)", "الساعات بالعشري", "الساعات المحتسبة × المعدل", "أجرة الساعة", "مبلغ المكافأة", "المبلغ المستحق", "الرقم", "ملاحظات", "حالة الربط"],
           rows: rows.map((x) => [formatDate(x.date), x.name, x.item, x.actualTime, x.decimalHours, x.countedHours, x.hourlyRate, x.bonusAmount, x.amount, x.code, x.notes, x.status.text + (x.warning ? ` | ${x.warning}` : "")]),
           money: [6, 7, 8],
         };

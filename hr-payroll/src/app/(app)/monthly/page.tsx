@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/page-header";
 import { MonthPicker } from "@/components/month-picker";
 import { ExportButtons } from "@/components/export-buttons";
 import { prisma } from "@/lib/db";
-import { buildMonthlyReport, sumRows } from "@/lib/report";
+import { buildMonthlyReport, getHolidays, sumRows } from "@/lib/report";
 import { ARABIC_WEEKDAYS_SHORT, fmtNumber3, format1, formatDate, formatMonth, pad2, weekdayOf } from "@/lib/payroll";
 import { monthFromParams } from "@/lib/utils";
 import { currentUser } from "@/lib/auth";
@@ -20,6 +20,7 @@ export default async function MonthlyPage({ searchParams }: { searchParams: Prom
   const [r, user] = await Promise.all([buildMonthlyReport(prisma, ym), currentUser()]);
   const t = sumRows(r.rows);
   const negatives = r.rows.filter((x) => x.net < 0).length;
+  const holidays = await getHolidays(prisma, r.start, r.end);
   const dayList = Array.from({ length: r.days }, (_, i) => i + 1);
 
   return (
@@ -87,7 +88,7 @@ export default async function MonthlyPage({ searchParams }: { searchParams: Prom
                   </Link>
                 </td>
                 {row.codesByDay.map((c, i) => {
-                  const fri = weekdayOf(`${ym}-${pad2(i + 1)}`) === r.settings.weeklyOffDay;
+                  const fri = weekdayOf(`${ym}-${pad2(i + 1)}`) === r.settings.weeklyOffDay || holidays.has(`${ym}-${pad2(i + 1)}`);
                   return (
                     <td key={i} className={`!px-0 text-center ${c ? `c-${c}` : fri ? "c-fri" : ""}`}>
                       {c ?? ""}

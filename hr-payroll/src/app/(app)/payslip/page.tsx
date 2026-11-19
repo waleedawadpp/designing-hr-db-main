@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { buildMonthlyReport, type ReportRow } from "@/lib/report";
+import { buildMonthlyReport, getSettings, type ReportRow } from "@/lib/report";
 import { decorateDeductions, decorateExtras } from "@/lib/entries";
 import { formatDate, formatMonth, formatOMR, format1, monthBounds } from "@/lib/payroll";
 import { monthFromParams } from "@/lib/utils";
@@ -23,7 +23,7 @@ export default async function PayslipPage({ searchParams }: { searchParams: Prom
   const ids = rows.map((r) => r.employeeId);
   const where = { deletedAt: null, date: { gte: start, lte: end }, employeeId: { in: ids }, item: { not: null } };
   const [extras, deductions] = await Promise.all([
-    decorateExtras(prisma, await prisma.extraEntry.findMany({ where, include: { employee: true }, orderBy: { date: "asc" } })),
+    decorateExtras(prisma, await prisma.extraEntry.findMany({ where, include: { employee: true }, orderBy: { date: "asc" } }), await getSettings(prisma)),
     decorateDeductions(prisma, await prisma.deductionEntry.findMany({ where, include: { employee: true }, orderBy: { date: "asc" } })),
   ]);
 
@@ -102,7 +102,7 @@ function Payslip({
               <Line label={driver ? "الأجرة المستحقة (أيام الحضور × الأجرة)" : "الراتب المستحق للشهر"} value={driver ? row.due : row.salary} />
               {!driver && <Line label="خصم الغياب" value={-row.absenceDeduction} />}
               {extras.map((x) => (
-                <Line key={x.id} label={`${x.item}${x.item === "ساعات إضافية" ? ` ${x.actualTime} س` : ""} — ${formatDate(x.date)}`} value={x.amount ?? 0} />
+                <Line key={x.id} label={`${x.item}${x.item === "ساعات إضافية" ? ` ${x.actualTime} س ×${x.rate}` : ""} — ${formatDate(x.date)}`} value={x.amount ?? 0} />
               ))}
               {deductions.map((d) => (
                 <Line key={d.id} label={`${d.item}${d.item === "تأخير" ? ` ${d.lateMinutes} د` : ""} — ${formatDate(d.date)}`} value={-(d.deducted ?? 0)} />

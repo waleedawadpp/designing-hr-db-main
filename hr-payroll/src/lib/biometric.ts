@@ -148,13 +148,14 @@ export function planEmployee(
   start: string,
   end: string,
   weeklyOffDay: number,
+  holidays: ReadonlySet<string> = new Set(),
 ): PlanCell[] {
   return datesBetween(start, end).map((date) => {
     const times = punches[date] ?? [];
     const cur = current[date] ?? null;
     const base = { date, current: cur, times };
     if ((emp.hireDate && date < emp.hireDate) || (emp.endDate && date > emp.endDate)) return { ...base, proposed: null, kind: "inactive" };
-    const isOff = weekdayOf(date) === weeklyOffDay;
+    const isOff = weekdayOf(date) === weeklyOffDay || holidays.has(date);
     if (isOff && !times.length) return { ...base, proposed: null, kind: "off" };
     if (cur && (KEEP_ALWAYS.has(cur) || (cur === "ن" && times.length))) return { ...base, proposed: cur, kind: "kept" };
     if (isOff && cur) return { ...base, proposed: cur, kind: "kept" };

@@ -10,6 +10,9 @@ import {
   linkStatus,
   minuteCost,
   otCountedHours,
+  entryRate,
+  DEFAULT_SETTINGS,
+  type PayrollSettings,
   otDecimalHours,
   type LinkStatus,
 } from "./payroll";
@@ -25,6 +28,10 @@ export interface ExtraView {
   notes: string;
   decimalHours: number | null;
   countedHours: number | null;
+  /** معدل الإضافي المطبّق على السطر (1.25 / 1.5 / …) */
+  rate: number | null;
+  /** سطر محسوب تلقائيًا من أوقات الدوام */
+  fromTime: boolean;
   hourlyRate: number | null;
   amount: number | null;
   code: string | null;
@@ -45,6 +52,8 @@ export interface DeductionView {
   deducted: number | null;
   code: string | null;
   status: LinkStatus;
+  /** خصم نقص محسوب تلقائيًا من أوقات الدوام */
+  fromTime: boolean;
 }
 
 type WithEmp<T> = T & { employee: Employee | null };
@@ -67,7 +76,11 @@ async function codesOn(db: PrismaClient, pairs: { employeeId: string; date: stri
   return map;
 }
 
-export async function decorateExtras(db: PrismaClient, list: WithEmp<ExtraEntry>[]): Promise<ExtraView[]> {
+export async function decorateExtras(
+  db: PrismaClient,
+  list: WithEmp<ExtraEntry>[],
+  settings: Pick<PayrollSettings, "overtimeRate" | "holidayRate"> = DEFAULT_SETTINGS,
+): Promise<ExtraView[]> {
   const codes = await codesOn(
     db,
     list.filter((x) => x.employeeId && x.date && x.item === "ساعات إضافية").map((x) => ({ employeeId: x.employeeId!, date: x.date! })),
@@ -92,9 +105,11 @@ export async function decorateExtras(db: PrismaClient, list: WithEmp<ExtraEntry>
       bonusAmount: x.bonusAmount,
       notes: x.notes ?? "",
       decimalHours: hmOk ? otDecimalHours(t!) : null,
-      countedHours: hmOk ? otCountedHours(t!) : null,
+      countedHours: hmOk ? otCountedHours(t!, entryRate(x, settings)) : null,
+      rate: x.item === "ساعات إضافية" ? entryRate(x, settings) : null,
+      fromTime: !!x.timeEntryId,
       hourlyRate: x.employee && x.date ? hourlyRate(x.employee, x.date) : null,
-      amount: linked ? extraAmount(x, x.employee) : null,
+      amount: linked ? extraAmount(x, x.employee, settings) : null,
       code: x.employee?.code ?? null,
       status,
       warning,
@@ -122,6 +137,7 @@ export async function decorateDeductions(_db: PrismaClient, list: WithEmp<Deduct
       deducted: linked ? deductionAmount(x, x.employee) : null,
       code: x.employee?.code ?? null,
       status,
+      fromTime: !!x.timeEntryId,
     };
   });
 }

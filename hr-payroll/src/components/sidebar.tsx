@@ -17,6 +17,7 @@ import {
   Receipt,
   Settings,
   Upload,
+  Timer,
   UserCog,
   Users,
   X,
@@ -44,6 +45,7 @@ const GROUPS: { label: string; color: string; items: Item[] }[] = [
       { href: "/employees", label: "بيانات الموظفين", icon: Users },
       { href: "/extras", label: "سجل الإضافي", icon: Clock },
       { href: "/deductions", label: "سجل الخصم", icon: MinusCircle },
+      { href: "/time", label: "الدوام والإضافي", icon: Timer },
     ],
   },
   {

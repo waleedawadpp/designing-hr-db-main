@@ -3,7 +3,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Combobox, type ComboOption } from "@/components/combobox";
 import { MonthPicker } from "@/components/month-picker";
 
-export function PayslipControls({ ym, employees, empId }: { ym: string; employees: ComboOption[]; empId: string }) {
+export function PayslipControls({ ym, employees, empId, allLabel = "كل العاملين (قسيمة لكل موظف)" }: { ym: string; employees: ComboOption[]; empId: string; allLabel?: string }) {
   const router = useRouter();
   const path = usePathname();
   const sp = useSearchParams();
@@ -17,7 +17,7 @@ export function PayslipControls({ ym, employees, empId }: { ym: string; employee
       <MonthPicker ym={ym} extra={{ emp: empId }} />
       <span className="text-sm font-semibold">الموظف</span>
       <div className="min-w-64 rounded border-2 border-gold bg-cream px-2 py-1">
-        <Combobox ariaLabel="الموظف" options={[{ value: "all", label: "كل العاملين (قسيمة لكل موظف)" }, ...employees]} value={empId} onChange={go} />
+        <Combobox ariaLabel="الموظف" options={[{ value: "all", label: allLabel }, ...employees]} value={empId} onChange={go} />
       </div>
     </div>
   );

@@ -27,6 +27,7 @@ export function AttendanceGrid({
   page,
   pageCount,
   weeklyOffDay,
+  holidays = [],
   canEdit,
   nextMonth,
   nextMonthLabel,
@@ -39,6 +40,8 @@ export function AttendanceGrid({
   page: number;
   pageCount: number;
   weeklyOffDay: number;
+  /** الإجازات الرسمية (YYYY-MM-DD) — تُظلَّل مثل العطلة الأسبوعية */
+  holidays?: string[];
   canEdit: boolean;
   nextMonth: string;
   nextMonthLabel: string;
@@ -265,7 +268,7 @@ export function AttendanceGrid({
                     <td className="sticky right-0 z-[1] calc font-medium sm:right-[70px]" title={row.duplicate ? "سطر مكرر لنفس الموظف في نفس الشهر" : undefined}>{row.name}</td>
                     {row.days.map((code, c) => {
                       const locked = isLocked(row, c);
-                      const fri = !locked && weekdayOf(`${row.month}-${pad2(c + 1)}`) === weeklyOffDay;
+                      const fri = !locked && (weekdayOf(`${row.month}-${pad2(c + 1)}`) === weeklyOffDay || holidays.includes(`${row.month}-${pad2(c + 1)}`));
                       return (
                         <td key={c} className={cn("!p-0 text-center", locked ? "c-out" : code ? `c-${code}` : fri ? "c-fri" : "")}>
                           {!locked && (

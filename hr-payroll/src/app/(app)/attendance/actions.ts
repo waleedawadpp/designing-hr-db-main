@@ -4,8 +4,9 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { setAttendanceCode } from "@/lib/attendance-write";
-import { INVALID_CODE_MESSAGE, isValidCode, isWorkingInMonth, monthBounds, nextMonthKey, pad2, weekdayOf, activeDays } from "@/lib/payroll";
-import { getSettings } from "@/lib/report";
+import { resyncTimeDay } from "@/lib/time-sync";
+import { INVALID_CODE_MESSAGE, isValidCode, isWorkingInMonth, monthBounds, nextMonthKey, pad2, weekdayOf, activeDays, isDayOff } from "@/lib/payroll";
+import { getHolidays, getSettings } from "@/lib/report";
 import { assertMonthsOpen, MonthClosedError } from "@/lib/month-close";
 import { currentMonthKey } from "@/lib/utils";
 
@@ -33,7 +34,10 @@ export async function setDayCode(monthId: string, day: number, code: string | nu
   if (locked) return { ok: false, error: locked };
   const { days } = monthBounds(row.month);
   if (!Number.isInteger(day) || day < 1 || day > days) return { ok: false, error: "هذا اليوم خارج الشهر" };
-  await setCode(monthId, day, code, user);
+  if (await setCode(monthId, day, code, user)) {
+    // خصم النقص يُحسب لأيام «حاضر» فقط، فتغيير الرمز (مثلًا إلى نصف يوم أو إجازة) يعيد حسابه
+    await resyncTimeDay(user, row.employeeId, `${row.month}-${pad2(day)}`);
+  }
   revalidatePath("/", "layout");
   return { ok: true };
 }
@@ -108,13 +112,14 @@ export async function fillEmployeePresent(monthId: string): Promise<Result & { c
   const locked = await closedError(r.month);
   if (locked) return { ok: false, error: locked };
   const settings = await getSettings(prisma);
+  const holidays = await getHolidays(prisma);
   const { days } = monthBounds(r.month);
   if (activeDays(r.employee, r.month) === 0) return { ok: true, changed: 0 };
   const filled = new Map(r.days.map((d) => [d.day, d.code]));
   let changed = 0;
   for (let d = 1; d <= days; d++) {
     const date = `${r.month}-${pad2(d)}`;
-    if (weekdayOf(date) === settings.weeklyOffDay || !inActiveRange(r.employee, date) || filled.get(d)) continue;
+    if (isDayOff(date, settings.weeklyOffDay, holidays) || !inActiveRange(r.employee, date) || filled.get(d)) continue;
     if (await setCode(r.id, d, "ح", user)) changed++;
   }
   revalidatePath("/", "layout");

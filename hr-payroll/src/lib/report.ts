@@ -14,7 +14,22 @@ import {
 
 export async function getSettings(db: PrismaClient): Promise<PayrollSettings> {
   const s = await db.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
-  return { systemStartYear: s.systemStartYear, weeklyOffDay: s.weeklyOffDay, annualLeaveEntitlement: s.annualLeaveEntitlement };
+  return {
+    systemStartYear: s.systemStartYear,
+    weeklyOffDay: s.weeklyOffDay,
+    annualLeaveEntitlement: s.annualLeaveEntitlement,
+    standardHours: s.standardHours,
+    overtimeRate: s.overtimeRate,
+    holidayRate: s.holidayRate,
+    shortDeduction: s.shortDeduction,
+    graceMinutes: s.graceMinutes,
+  };
+}
+
+/** الإجازات الرسمية بين تاريخين (أو كلها) كمجموعة تواريخ YYYY-MM-DD. */
+export async function getHolidays(db: PrismaClient, start?: string, end?: string): Promise<Set<string>> {
+  const rows = await db.holiday.findMany({ where: start && end ? { date: { gte: start, lte: end } } : undefined, select: { date: true } });
+  return new Set(rows.map((h) => h.date));
 }
 
 export interface ReportRow extends MonthlyRow {
@@ -52,7 +67,7 @@ export async function buildMonthlyReport(db: PrismaClient, ym: string, opts: { l
   }
   const { start, end, days } = monthBounds(ym);
   const { year } = parseMonthKey(ym);
-  const settings = await getSettings(db);
+  const [settings, holidays] = await Promise.all([getSettings(db), getHolidays(db, start, end)]);
 
   const [employees, monthRows, extras, deductions, yearLeaveDays, extrasCount] = await Promise.all([
     db.employee.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] }),
@@ -114,6 +129,7 @@ export async function buildMonthlyReport(db: PrismaClient, ym: string, opts: { l
       deductions: deductions.filter((x) => x.employeeId === e.id),
       leaveCountInYear: leavesByEmp.get(e.id) ?? 0,
       settings,
+      holidays,
     });
     codesByDay.forEach((c, i) => {
       if (c === "ح") {
