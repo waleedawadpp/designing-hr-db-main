@@ -183,9 +183,11 @@ export async function saveTime(
 }
 
 /** يعيد حساب الإضافي وخصم النقص التلقائيين لكل أوقات الأشهر غير المعتمدة (بعد تغيير الإعدادات أو الإجازات). */
-export async function resyncOpenTimes(user: User, where: { date?: string } = {}): Promise<number> {
+export async function resyncOpenTimes(user: User, where: { date?: string; month?: string } = {}): Promise<number> {
   const [closed, settings, holidays] = await Promise.all([closedMonths(prisma), getSettings(prisma), getHolidays(prisma)]);
-  const entries = await prisma.timeEntry.findMany({ where: where.date ? { date: where.date } : undefined });
+  const entries = await prisma.timeEntry.findMany({
+    where: where.date ? { date: where.date } : where.month ? { date: { startsWith: `${where.month}-` } } : undefined,
+  });
   let n = 0;
   for (const e of entries) {
     if (closed.includes(e.date.slice(0, 7))) continue;
