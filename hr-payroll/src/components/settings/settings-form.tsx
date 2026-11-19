@@ -30,6 +30,20 @@ export function SettingsForm({ settings }: { settings: PayrollSettings }) {
         </label>
       </fieldset>
       <fieldset className="grid gap-4 sm:grid-cols-3">
+        <legend className="mb-2 font-bold text-navy">خصم التأخير والخروج المبكر</legend>
+        <label className="block text-sm">الخصم التلقائي
+          <select name="shortDeduction" defaultValue={settings.shortDeduction ? "1" : "0"} className={field}>
+            <option value="1">مفعّل</option>
+            <option value="0">متوقف</option>
+          </select>
+          <span className="text-xs text-slate-500">نقص الساعات عن الدوام الرسمي يُخصم ساعة بساعة</span>
+        </label>
+        <label className="block text-sm">مهلة السماح (دقيقة)
+          <input name="graceMinutes" type="number" min={0} max={120} step={1} defaultValue={settings.graceMinutes} className={field} />
+          <span className="text-xs text-slate-500">النقص الذي لا يتجاوزها لا يُخصم، وما زاد عليها يُخصم كاملًا</span>
+        </label>
+      </fieldset>
+      <fieldset className="grid gap-4 sm:grid-cols-3">
         <legend className="mb-2 font-bold text-navy">عام</legend>
         <label className="block text-sm">رصيد الإجازة السنوي (يوم)
           <input name="annualLeaveEntitlement" type="number" min={0} max={365} defaultValue={settings.annualLeaveEntitlement} className={field} />

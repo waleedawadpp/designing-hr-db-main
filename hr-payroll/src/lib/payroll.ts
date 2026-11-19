@@ -47,6 +47,10 @@ export interface PayrollSettings {
   overtimeRate: number;
   /** معدل ساعات العمل في العطلة الأسبوعية والإجازات الرسمية */
   holidayRate: number;
+  /** خصم النقص عن ساعات الدوام (تأخير أو خروج مبكر) تلقائيًا */
+  shortDeduction: boolean;
+  /** مهلة السماح بالدقائق: النقص الذي لا يتجاوزها لا يُخصم */
+  graceMinutes: number;
 }
 
 export const DEFAULT_SETTINGS: PayrollSettings = {
@@ -56,6 +60,8 @@ export const DEFAULT_SETTINGS: PayrollSettings = {
   standardHours: 9,
   overtimeRate: 1.5,
   holidayRate: 1.5,
+  shortDeduction: true,
+  graceMinutes: 15,
 };
 
 /** معدلات الإضافي المسموح بها في الإعدادات */
@@ -306,7 +312,7 @@ export interface DayTime {
   worked: number | null;
   /** دقائق الإضافي */
   overtime: number;
-  /** دقائق النقص عن الدوام الرسمي (للعرض فقط — لا خصم تلقائي) */
+  /** دقائق النقص عن الدوام الرسمي (تأخير أو خروج مبكر) */
   short: number;
   /** يوم عطلة (أسبوعية أو رسمية): كل ساعات العمل إضافي بمعدل العطلات */
   holiday: boolean;
@@ -314,7 +320,7 @@ export interface DayTime {
 
 /**
  * حساب يوم من أوقات الدوام:
- *  - يوم عادي: الإضافي = ما زاد على ساعات الدوام الرسمية، والنقص = ما قلّ عنها (للعرض فقط).
+ *  - يوم عادي: الإضافي = ما زاد على ساعات الدوام الرسمية، والنقص = ما قلّ عنها.
  *  - يوم عطلة (أسبوعية أو رسمية): كل ساعات العمل إضافي، ولا نقص.
  */
 export function dayTime(
@@ -328,6 +334,23 @@ export function dayTime(
   if (holiday) return { worked, overtime: worked, short: 0, holiday };
   const std = Math.round(standardHours * 60);
   return { worked, overtime: Math.max(0, worked - std), short: Math.max(0, std - worked), holiday };
+}
+
+/** رموز الحضور التي يُخصم فيها نقص الساعات: حاضر أو لم يُسجَّل. الغياب ونصف اليوم والإجازات لها حسابها الخاص. */
+export const SHORT_DEDUCTION_CODES: readonly (string | null)[] = [null, "", "ح"];
+
+/**
+ * دقائق النقص التي تُخصم: صفر إن كان الخصم متوقفًا، أو النقص ضمن مهلة السماح، أو اليوم ليس «حاضرًا».
+ * إذا تجاوز النقص المهلة يُخصم كاملًا (ساعة بساعة).
+ */
+export function deductibleShort(
+  short: number,
+  settings: Pick<PayrollSettings, "shortDeduction" | "graceMinutes">,
+  dayCode: string | null = null,
+): number {
+  if (!settings.shortDeduction || short <= 0) return 0;
+  if (!SHORT_DEDUCTION_CODES.includes(dayCode)) return 0;
+  return short > settings.graceMinutes ? short : 0;
 }
 
 /** هل التاريخ يوم عطلة: العطلة الأسبوعية أو إجازة رسمية. */

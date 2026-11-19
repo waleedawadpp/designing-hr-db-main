@@ -16,6 +16,8 @@ export interface TimeRow {
   checkOut: string;
   source: string;
   time: DayTime;
+  /** دقائق النقص المخصومة (سطر الخصم التلقائي في سجل الخصومات) */
+  deducted: number;
 }
 
 export function TimeTable({
@@ -43,8 +45,9 @@ export function TimeTable({
       ot: a.ot + (r.time.holiday ? 0 : r.time.overtime),
       otH: a.otH + (r.time.holiday ? r.time.overtime : 0),
       short: a.short + r.time.short,
+      cut: a.cut + r.deducted,
     }),
-    { worked: 0, ot: 0, otH: 0, short: 0 },
+    { worked: 0, ot: 0, otH: 0, short: 0, cut: 0 },
   );
 
   async function save(r: TimeRow, checkIn: string, checkOut: string) {
@@ -68,13 +71,13 @@ export function TimeTable({
         </div>
       )}
       {error && <div role="alert" className="rounded border border-[#B91C1C] bg-[#FEE2E2] px-3 py-2 text-sm font-semibold text-[#B91C1C]">{error}</div>}
-      <div className="h-5 text-sm" aria-live="polite">{saved && <span className="text-[#166534]">✔ تم الحفظ — حُدِّث الإضافي في «سجل الإضافي»</span>}</div>
+      <div className="h-5 text-sm" aria-live="polite">{saved && <span className="text-[#166534]">✔ تم الحفظ — حُدِّث الإضافي وخصم التأخير في السجلات</span>}</div>
       <div className="overflow-x-auto rounded-lg border border-line bg-white">
         <table className="tbl w-full" data-testid="time-table">
           <thead>
             <tr>
               <th>التاريخ</th><th>اليوم</th><th>الدخول</th><th>الخروج</th>
-              <th className="th-total">ساعات العمل</th><th className="th-green">الإضافي</th><th className="th-red">النقص</th><th>المصدر</th>
+              <th className="th-total">ساعات العمل</th><th className="th-green">الإضافي</th><th className="th-red">النقص</th><th className="th-red">المخصوم</th><th>المصدر</th>
             </tr>
           </thead>
           <tbody>
@@ -89,6 +92,7 @@ export function TimeTable({
                 {total.otH ? ` + ${fmtMinutes(total.otH)} عطلات` : ""}
               </td>
               <td className="num">{fmtMinutes(total.short)}</td>
+              <td className="num">{fmtMinutes(total.cut)}</td>
               <td />
             </tr>
           </tbody>
@@ -135,6 +139,7 @@ function Row({
         {r.time.overtime ? `${fmtMinutes(r.time.overtime)} ×${r.time.holiday ? holidayRate : overtimeRate}` : ""}
       </td>
       <td className="num text-[#B91C1C]">{fmtMinutes(r.time.short)}</td>
+      <td className="num font-semibold text-[#B91C1C]" data-testid="time-cut">{r.deducted ? fmtMinutes(r.deducted) : ""}</td>
       <td className="text-xs text-slate-500">{r.source}</td>
     </tr>
   );

@@ -131,6 +131,7 @@ model DeductionEntry {
   lateMinutes Float?
   amount      Float?
   notes       String? @db.Text
+  timeEntryId String?   @unique // خصم نقص محسوب تلقائيًا من أوقات الدوام
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
@@ -149,6 +150,8 @@ model Settings {
   standardHours          Float @default(9) // ساعات الدوام الرسمية اليومية — ما بعدها إضافي
   overtimeRate           Float @default(1.5) // معدل الساعة الإضافية في الأيام العادية (1.25 أو 1.5)
   holidayRate            Float @default(1.5) // معدل ساعات العمل في العطلة الأسبوعية والإجازات الرسمية
+  shortDeduction         Boolean @default(true) // خصم التأخير/الخروج المبكر تلقائيًا (نقص عن ساعات الدوام)
+  graceMinutes           Int   @default(15) // مهلة السماح: النقص الذي لا يتجاوزها لا يُخصم
 }
 
 model AuditLog {

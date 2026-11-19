@@ -5,6 +5,8 @@ import {
   attendanceRate,
   computeMonthlyRow,
   dayTime,
+  deductibleShort,
+  deductionAmount,
   entryRate,
   extraAmount,
   isDayOff,
@@ -104,5 +106,41 @@ describe("الإجازات الرسمية", () => {
       ["2026-11-18", "off", null],
       ["2026-11-19", "fill", "غ"],
     ]);
+  });
+});
+
+describe("خصم التأخير والخروج المبكر (نقص عن 9 ساعات)", () => {
+  const on = { shortDeduction: true, graceMinutes: 15 };
+  it("يُخصم النقص كاملًا إذا تجاوز مهلة السماح", () => {
+    const short = dayTime("08:30", "17:00", false, 9).short; // 30 دقيقة
+    expect(deductibleShort(short, on)).toBe(30);
+    expect(deductibleShort(short, on, "ح")).toBe(30);
+  });
+  it("النقص ضمن المهلة لا يُخصم، ومهلة صفر تخصم أي نقص", () => {
+    expect(deductibleShort(15, on)).toBe(0);
+    expect(deductibleShort(16, on)).toBe(16);
+    expect(deductibleShort(5, { shortDeduction: true, graceMinutes: 0 })).toBe(5);
+  });
+  it("لا خصم إذا كان متوقفًا، أو في يوم عطلة، أو لرموز الغياب ونصف اليوم والإجازات", () => {
+    expect(deductibleShort(60, { shortDeduction: false, graceMinutes: 0 })).toBe(0);
+    expect(dayTime("09:00", "11:00", true, 9).short).toBe(0);
+    for (const code of ["غ", "ن", "إ", "م"]) expect(deductibleShort(60, on, code)).toBe(0);
+  });
+  it("المبلغ ساعة بساعة: نصف ساعة نقص = نصف أجرة ساعة", () => {
+    // 270 ر.ع ÷ 30 يومًا ÷ 9 ساعات = 1 ر.ع للساعة
+    expect(round3(deductionAmount({ date: "2026-11-10", item: "تأخير", lateMinutes: 30 }, emp))).toBe(0.5);
+  });
+  it("الصافي الشهري: إضافي يوم وخصم نقص يوم آخر", () => {
+    const row = computeMonthlyRow({
+      employee: emp,
+      ym: "2026-11",
+      codes: [],
+      extras: [{ date: "2026-11-10", item: "ساعات إضافية", actualTime: 1 }],
+      deductions: [{ date: "2026-11-11", item: "تأخير", lateMinutes: 90 }],
+      leaveCountInYear: 0,
+      settings: DEFAULT_SETTINGS,
+    });
+    expect(round3(row.overtime)).toBe(1.5);
+    expect(round3(row.net)).toBe(270);
   });
 });

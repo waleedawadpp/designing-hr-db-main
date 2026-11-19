@@ -52,6 +52,8 @@ export interface DeductionView {
   deducted: number | null;
   code: string | null;
   status: LinkStatus;
+  /** خصم نقص محسوب تلقائيًا من أوقات الدوام */
+  fromTime: boolean;
 }
 
 type WithEmp<T> = T & { employee: Employee | null };
@@ -135,6 +137,7 @@ export async function decorateDeductions(_db: PrismaClient, list: WithEmp<Deduct
       deducted: linked ? deductionAmount(x, x.employee) : null,
       code: x.employee?.code ?? null,
       status,
+      fromTime: !!x.timeEntryId,
     };
   });
 }

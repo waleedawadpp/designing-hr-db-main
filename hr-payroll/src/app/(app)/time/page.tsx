@@ -16,7 +16,7 @@ export default async function TimePage({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   const ym = monthFromParams(sp);
   const { start, end, days } = monthBounds(ym);
-  const [user, settings, holidaySet, holidayRows, closed, employeesAll, entries] = await Promise.all([
+  const [user, settings, holidaySet, holidayRows, closed, employeesAll, entries, autoDeductions] = await Promise.all([
     currentUser(),
     getSettings(prisma),
     getHolidays(prisma, start, end),
@@ -24,7 +24,13 @@ export default async function TimePage({ searchParams }: { searchParams: Promise
     closedMonths(prisma),
     prisma.employee.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] }),
     prisma.timeEntry.findMany({ where: { date: { gte: start, lte: end } } }),
+    prisma.deductionEntry.findMany({
+      where: { date: { gte: start, lte: end }, timeEntryId: { not: null }, deletedAt: null },
+      select: { timeEntryId: true, lateMinutes: true },
+    }),
   ]);
+  // دقائق النقص المخصومة فعلًا (سطر الخصم التلقائي في سجل الخصومات، بعد أي تعديل يدوي)
+  const deducted = new Map(autoDeductions.map((d) => [d.timeEntryId!, d.lateMinutes ?? 0]));
   const employees = employeesAll.filter((e) => isWorkingInMonth(e, ym));
   const holidayName = new Map(holidayRows.map((h) => [h.date, h.name]));
   const empId = sp.emp && employees.some((e) => e.id === sp.emp) ? sp.emp : "all";
@@ -34,7 +40,11 @@ export default async function TimePage({ searchParams }: { searchParams: Promise
   const header = (
     <PageHeader
       title={`الدوام والإضافي | ${formatMonth(ym)}`}
-      hint={`الدوام الرسمي ${std} يوميًا — ما بعدها إضافي بمعدل ${settings.overtimeRate} • العمل في يوم ${ARABIC_WEEKDAYS[settings.weeklyOffDay]} والإجازات الرسمية كله إضافي بمعدل ${settings.holidayRate} • النقص عن الدوام يظهر للمراجعة فقط ولا يُخصم تلقائيًا`}
+      hint={`الدوام الرسمي ${std} يوميًا — ما بعدها إضافي بمعدل ${settings.overtimeRate} • العمل في يوم ${ARABIC_WEEKDAYS[settings.weeklyOffDay]} والإجازات الرسمية كله إضافي بمعدل ${settings.holidayRate} • ${
+        settings.shortDeduction
+          ? `النقص عن الدوام (تأخير أو خروج مبكر) يُخصم ساعة بساعة إذا تجاوز ${settings.graceMinutes} دقيقة`
+          : "خصم النقص التلقائي متوقف من الإعدادات"
+      }`}
     />
   );
   const controls = (
@@ -44,8 +54,9 @@ export default async function TimePage({ searchParams }: { searchParams: Promise
   if (empId === "all") {
     const rows = employees.map((e) => {
       const mine = entries.filter((t) => t.employeeId === e.id);
-      let worked = 0, ot = 0, otHoliday = 0, short = 0, incomplete = 0;
+      let worked = 0, ot = 0, otHoliday = 0, short = 0, incomplete = 0, cut = 0;
       for (const t of mine) {
+        cut += deducted.get(t.id) ?? 0;
         const d = dayTime(t.checkIn, t.checkOut, isDayOff(t.date, settings.weeklyOffDay, holidaySet), settings.standardHours);
         if (d.worked == null) {
           if (t.checkIn || t.checkOut) incomplete++;
@@ -56,7 +67,7 @@ export default async function TimePage({ searchParams }: { searchParams: Promise
         if (d.holiday) otHoliday += d.overtime;
         else ot += d.overtime;
       }
-      return { e, days: mine.filter((t) => t.checkIn || t.checkOut).length, worked, ot, otHoliday, short, incomplete };
+      return { e, days: mine.filter((t) => t.checkIn || t.checkOut).length, worked, ot, otHoliday, short, incomplete, cut };
     });
     return (
       <div>
@@ -68,7 +79,7 @@ export default async function TimePage({ searchParams }: { searchParams: Promise
               <tr>
                 <th>الرقم</th><th>الاسم</th><th className="th-total">أيام فيها بصمة</th><th className="th-total">ساعات العمل</th>
                 <th className="th-green">إضافي عادي ×{settings.overtimeRate}</th><th className="th-green">إضافي عطلات ×{settings.holidayRate}</th>
-                <th className="th-red">نقص عن الدوام</th><th className="th-red">بصمة ناقصة</th>
+                <th className="th-red">نقص عن الدوام</th><th className="th-red">نقص مخصوم</th><th className="th-red">بصمة ناقصة</th>
               </tr>
             </thead>
             <tbody>
@@ -83,6 +94,7 @@ export default async function TimePage({ searchParams }: { searchParams: Promise
                   <td className="num">{fmtMinutes(r.ot)}</td>
                   <td className="num">{fmtMinutes(r.otHoliday)}</td>
                   <td className={`num ${r.short ? "text-[#B91C1C]" : ""}`}>{fmtMinutes(r.short)}</td>
+                  <td className={`num ${r.cut ? "font-semibold text-[#B91C1C]" : ""}`} data-testid="time-sum-cut">{fmtMinutes(r.cut)}</td>
                   <td className={`num ${r.incomplete ? "font-semibold text-[#B45309]" : ""}`}>{r.incomplete || ""}</td>
                 </tr>
               ))}
@@ -108,6 +120,7 @@ export default async function TimePage({ searchParams }: { searchParams: Promise
       checkOut: t?.checkOut ?? "",
       source: t?.source ?? "",
       time: dayTime(t?.checkIn, t?.checkOut, off, settings.standardHours),
+      deducted: t ? deducted.get(t.id) ?? 0 : 0,
     };
   });
   return (

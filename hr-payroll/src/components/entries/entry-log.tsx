@@ -288,7 +288,7 @@ function EntryRow({
       <td className="calc num font-semibold" data-testid="entry-amount">{n3(d?.deducted)}</td>
       <td className="calc">{d?.code ?? ""}</td>
       {notesCell}
-      {d ? <StatusCell status={d.status} /> : <td className="calc" />}
+      {d ? <StatusCell status={d.status} fromTime={d.fromTime} /> : <td className="calc" />}
       {del}
     </tr>
   );

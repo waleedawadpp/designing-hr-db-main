@@ -21,6 +21,8 @@ export async function getSettings(db: PrismaClient): Promise<PayrollSettings> {
     standardHours: s.standardHours,
     overtimeRate: s.overtimeRate,
     holidayRate: s.holidayRate,
+    shortDeduction: s.shortDeduction,
+    graceMinutes: s.graceMinutes,
   };
 }
 

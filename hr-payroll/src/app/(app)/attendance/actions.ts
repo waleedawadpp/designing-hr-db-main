@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { setAttendanceCode } from "@/lib/attendance-write";
+import { resyncTimeDay } from "@/lib/time-sync";
 import { INVALID_CODE_MESSAGE, isValidCode, isWorkingInMonth, monthBounds, nextMonthKey, pad2, weekdayOf, activeDays, isDayOff } from "@/lib/payroll";
 import { getHolidays, getSettings } from "@/lib/report";
 import { assertMonthsOpen, MonthClosedError } from "@/lib/month-close";
@@ -33,7 +34,10 @@ export async function setDayCode(monthId: string, day: number, code: string | nu
   if (locked) return { ok: false, error: locked };
   const { days } = monthBounds(row.month);
   if (!Number.isInteger(day) || day < 1 || day > days) return { ok: false, error: "هذا اليوم خارج الشهر" };
-  await setCode(monthId, day, code, user);
+  if (await setCode(monthId, day, code, user)) {
+    // خصم النقص يُحسب لأيام «حاضر» فقط، فتغيير الرمز (مثلًا إلى نصف يوم أو إجازة) يعيد حسابه
+    await resyncTimeDay(user, row.employeeId, `${row.month}-${pad2(day)}`);
+  }
   revalidatePath("/", "layout");
   return { ok: true };
 }

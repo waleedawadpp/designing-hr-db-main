@@ -42,10 +42,14 @@ test("الدوام ← الإضافي التلقائي بمعدل الإعداد
   // يوم عادي: 08:00 – 19:30 = 11:30 ← إضافي 2:30 ×1.25
   const r1 = await setTimes(page, "2026-10-12", "08:00", "19:30");
   await expect(r1.getByTestId("time-ot")).toHaveText("2:30 ×1.25");
-  // نقص: 08:30 – 17:00 = 8:30 ← نقص 0:30 بلا إضافي
+  // نقص: 08:30 – 17:00 = 8:30 ← نقص 0:30 بلا إضافي، ويُخصم لأنه تجاوز مهلة السماح (15 دقيقة)
   const r2 = await setTimes(page, "2026-10-13", "08:30", "17:00");
   await expect(r2.getByTestId("time-ot")).toHaveText("");
-  await expect(r2).toContainText("0:30");
+  await expect(r2.getByTestId("time-cut")).toHaveText("0:30");
+  // نقص ضمن المهلة: 08:10 – 17:00 = 8:50 ← لا خصم
+  const r4 = await setTimes(page, "2026-10-15", "08:10", "17:00");
+  await expect(r4).toContainText("0:10");
+  await expect(r4.getByTestId("time-cut")).toHaveText("");
   // الإجازة الرسمية: 09:00 – 13:00 ← كل الساعات إضافي 4:00 ×1.5 (معدل العطلات)
   const r3 = await setTimes(page, "2026-10-14", "09:00", "13:00");
   await expect(r3).toContainText("إجازة اختبار");
@@ -58,6 +62,13 @@ test("الدوام ← الإضافي التلقائي بمعدل الإعداد
   const ot3 = page.getByTestId("entry-row").filter({ hasText: "14/10/2026" }).filter({ has: page.getByTestId("from-time") });
   await expect(ot3.getByTestId("entry-amount")).toHaveText("21.505"); // 4 × 1.5 × 3.5842
 
+  // سجل الخصومات: سطر تأخير تلقائي ساعة بساعة — 30 دقيقة × 3.5842 ÷ 60
+  await page.goto("/deductions?y=2026&m=10");
+  const cut = page.getByTestId("entry-row").filter({ has: page.getByTestId("from-time") });
+  await expect(cut).toHaveCount(1);
+  await expect(cut).toContainText("13/10/2026");
+  await expect(cut.getByTestId("entry-amount")).toHaveText("1.792");
+
   // تعديل الوقت يحدّث السطر نفسه، ولا يكرره
   await page.goto("/time?y=2026&m=10");
   await page.getByTestId("time-sum-622001").getByRole("link").click();
@@ -67,6 +78,14 @@ test("الدوام ← الإضافي التلقائي بمعدل الإعداد
   const rows12 = page.getByTestId("entry-row").filter({ hasText: "12/10/2026" }).filter({ has: page.getByTestId("from-time") });
   await expect(rows12).toHaveCount(1);
   await expect(rows12.getByTestId("entry-amount")).toHaveText("4.480"); // 1 × 1.25 × 3.5842
+
+  // إكمال الساعات يحذف خصم ذلك اليوم
+  await page.goto("/time?y=2026&m=10");
+  await page.getByTestId("time-sum-622001").getByRole("link").click();
+  const r2b = await setTimes(page, "2026-10-13", "08:00", "17:00");
+  await expect(r2b.getByTestId("time-cut")).toHaveText("");
+  await page.goto("/deductions?y=2026&m=10");
+  await expect(page.getByTestId("entry-row").filter({ has: page.getByTestId("from-time") })).toHaveCount(0);
 
   // إرجاع الإعدادات وحذف الإجازة
   await page.goto("/settings");
