@@ -1,6 +1,7 @@
 // يعمل مرة واحدة عند بدء الخادم (من instrumentation.ts) على MySQL فقط:
 //  1) يطبّق ترحيلات prisma/mysql/migrations التي لم تُطبَّق بعد (لا يحتاج الخادم إلى prisma CLI)
-//  2) ينشئ أول مدير من BOOTSTRAP_ADMIN_EMAIL و BOOTSTRAP_ADMIN_PASSWORD إن لم يوجد أي مستخدم
+//  2) ينفّذ مهام البيانات لمرة واحدة (DATA_TASKS) ويسجّلها في `_app_migrations` فلا تتكرر
+//  3) ينشئ أول مدير من BOOTSTRAP_ADMIN_EMAIL و BOOTSTRAP_ADMIN_PASSWORD إن لم يوجد أي مستخدم
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
 import { MYSQL_MIGRATIONS } from "./mysql-migrations";
@@ -43,10 +44,36 @@ export async function migrateMysql() {
   }
 }
 
+const SYSTEM_USER = { email: "النظام (تحديث تلقائي)" };
+
+/** مهام بيانات تُنفَّذ مرة واحدة بعد الترحيلات. */
+const DATA_TASKS: { id: string; run: () => Promise<string> }[] = [
+  {
+    // خصم التأخير أُضيف في 0009: يُحسب على أيام الدوام المسجّلة مسبقًا في الشهر الحالي (نوفمبر 2026)
+    id: "task_0001_short_deduction_2026_11",
+    run: async () => {
+      const { resyncOpenTimes } = await import("./time-sync");
+      const n = await resyncOpenTimes(SYSTEM_USER, { month: "2026-11" });
+      return `أُعيد حساب الإضافي وخصم التأخير لشهر 2026-11: تغيّر ${n} يومًا`;
+    },
+  },
+];
+
+async function runDataTasks() {
+  const done = new Set((await prisma.$queryRawUnsafe<{ id: string }[]>("SELECT id FROM `_app_migrations`")).map((r) => r.id));
+  for (const t of DATA_TASKS) {
+    if (done.has(t.id)) continue;
+    const msg = await t.run();
+    await prisma.$executeRawUnsafe("INSERT INTO `_app_migrations` (id) VALUES (?)", t.id);
+    console.log(`✔ bootstrap: ${t.id} — ${msg}`);
+  }
+}
+
 export async function bootstrapDatabase() {
   if (!process.env.DATABASE_URL?.startsWith("mysql")) return;
   await migrateMysql();
   await prisma.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
+  await runDataTasks();
 
   const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.BOOTSTRAP_ADMIN_PASSWORD;
