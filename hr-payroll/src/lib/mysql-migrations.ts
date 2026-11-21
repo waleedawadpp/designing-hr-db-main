@@ -35,5 +35,9 @@ export const MYSQL_MIGRATIONS: { id: string; sql: string }[] = [
   {
     "id": "0009_short_deduction",
     "sql": "-- AlterTable\nALTER TABLE `DeductionEntry` ADD COLUMN `timeEntryId` VARCHAR(191) NULL;\n\n-- AlterTable\nALTER TABLE `Settings` ADD COLUMN `graceMinutes` INTEGER NOT NULL DEFAULT 15,\n    ADD COLUMN `shortDeduction` BOOLEAN NOT NULL DEFAULT true;\n\n-- CreateIndex\nCREATE UNIQUE INDEX `DeductionEntry_timeEntryId_key` ON `DeductionEntry`(`timeEntryId`);\n\n"
+  },
+  {
+    "id": "0010_pay_by_attendance",
+    "sql": "-- AlterTable\nALTER TABLE `Employee` ADD COLUMN `weeklyOff` VARCHAR(191) NULL;\n\n-- AlterTable\nALTER TABLE `Settings` ADD COLUMN `payByAttendanceFrom` VARCHAR(191) NULL DEFAULT '2026-11';\n\n"
   }
 ];

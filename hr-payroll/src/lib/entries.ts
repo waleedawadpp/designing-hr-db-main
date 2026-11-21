@@ -79,7 +79,7 @@ async function codesOn(db: PrismaClient, pairs: { employeeId: string; date: stri
 export async function decorateExtras(
   db: PrismaClient,
   list: WithEmp<ExtraEntry>[],
-  settings: Pick<PayrollSettings, "overtimeRate" | "holidayRate"> = DEFAULT_SETTINGS,
+  settings: PayrollSettings = DEFAULT_SETTINGS,
 ): Promise<ExtraView[]> {
   const codes = await codesOn(
     db,
@@ -108,7 +108,7 @@ export async function decorateExtras(
       countedHours: hmOk ? otCountedHours(t!, entryRate(x, settings)) : null,
       rate: x.item === "ساعات إضافية" ? entryRate(x, settings) : null,
       fromTime: !!x.timeEntryId,
-      hourlyRate: x.employee && x.date ? hourlyRate(x.employee, x.date) : null,
+      hourlyRate: x.employee && x.date ? hourlyRate(x.employee, x.date, settings) : null,
       amount: linked ? extraAmount(x, x.employee, settings) : null,
       code: x.employee?.code ?? null,
       status,
@@ -117,7 +117,11 @@ export async function decorateExtras(
   });
 }
 
-export async function decorateDeductions(_db: PrismaClient, list: WithEmp<DeductionEntry>[]): Promise<DeductionView[]> {
+export async function decorateDeductions(
+  _db: PrismaClient,
+  list: WithEmp<DeductionEntry>[],
+  settings: PayrollSettings = DEFAULT_SETTINGS,
+): Promise<DeductionView[]> {
   return list.map((x) => {
     const status = linkStatus(
       { date: x.date, hasName: !!(x.employeeId || x.rawName), item: x.item, numbers: [x.lateMinutes, x.amount] },
@@ -133,8 +137,8 @@ export async function decorateDeductions(_db: PrismaClient, list: WithEmp<Deduct
       lateMinutes: x.lateMinutes,
       amount: x.amount,
       notes: x.notes ?? "",
-      minuteCost: x.employee && x.date ? minuteCost(x.employee, x.date) : null,
-      deducted: linked ? deductionAmount(x, x.employee) : null,
+      minuteCost: x.employee && x.date ? minuteCost(x.employee, x.date, settings) : null,
+      deducted: linked ? deductionAmount(x, x.employee, settings) : null,
       code: x.employee?.code ?? null,
       status,
       fromTime: !!x.timeEntryId,

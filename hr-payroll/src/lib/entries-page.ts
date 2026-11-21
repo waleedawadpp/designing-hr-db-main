@@ -26,9 +26,10 @@ export async function loadEntries(kind: "extra" | "deduction", ym: string | "all
   const employees = (await prisma.employee.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] }))
     .filter((e) => (ym === "all" ? !e.endDate || e.endDate >= new Date().toISOString().slice(0, 10) : isWorkingInMonth(e, ym)))
     .map((e) => ({ value: e.id, label: e.name }));
+  const settings = await getSettings(prisma);
   const views =
     kind === "extra"
-      ? await decorateExtras(prisma, rows as Parameters<typeof decorateExtras>[1], await getSettings(prisma))
-      : await decorateDeductions(prisma, rows as Parameters<typeof decorateDeductions>[1]);
+      ? await decorateExtras(prisma, rows as Parameters<typeof decorateExtras>[1], settings)
+      : await decorateDeductions(prisma, rows as Parameters<typeof decorateDeductions>[1], settings);
   return { total, unlinked, rows: views, employees, pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)), closedMonths: await closedMonths(prisma) };
 }

@@ -30,6 +30,16 @@ export function SettingsForm({ settings }: { settings: PayrollSettings }) {
         </label>
       </fieldset>
       <fieldset className="grid gap-4 sm:grid-cols-3">
+        <legend className="mb-2 font-bold text-navy">حساب الراتب الشهري</legend>
+        <label className="block text-sm sm:col-span-2">حساب الراتب حسب الأيام المدفوعة ابتداءً من شهر
+          <input name="payByAttendanceFrom" type="month" defaultValue={settings.payByAttendanceFrom ?? ""} className={field} dir="ltr" />
+          <span className="text-xs text-slate-500">
+            الراتب ÷ أيام العمل (أيام الشهر عدا العطلة الأسبوعية للموظف) × الأيام المدفوعة: ح و إ و م والإجازة الرسمية يوم، ن نصف يوم، والغياب والخانة الفارغة لا تُدفع.
+            الأشهر قبله تبقى بحساب الإكسل. اتركه فارغًا لإيقاف الحساب الجديد.
+          </span>
+        </label>
+      </fieldset>
+      <fieldset className="grid gap-4 sm:grid-cols-3">
         <legend className="mb-2 font-bold text-navy">خصم التأخير والخروج المبكر</legend>
         <label className="block text-sm">الخصم التلقائي
           <select name="shortDeduction" defaultValue={settings.shortDeduction ? "1" : "0"} className={field}>

@@ -1,12 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 
 // المسار الكامل: إضافة موظف ← حضور شهر (11/2026) ← إضافي وخصم ← التحقق من الصافي في الكشف ولوحة التحكم.
-// موظف راتبه 300 في نوفمبر 2026 (30 يومًا، 26 يوم عمل): الأجرة اليومية 10.
-//  - حضور كل أيام العمل ثم: يوم 2 = غ، يوم 3 = ن ← خصم الغياب = 1.5 × 10 = 15 ← المستحق 285
-//  - إضافي 2.30 يوم 02/11 = 2.5 × 1.5 × (10/9) = 4.16667 (مع تنبيه: غائب في هذا اليوم)
+// موظف راتبه 300 في نوفمبر 2026 — الحساب حسب الأيام المدفوعة (من 11/2026):
+//  أيام العمل 26 (30 يومًا عدا 4 أيام جمعة) ← الأجرة اليومية = 300 ÷ 26 = 11.53846، وأجرة الساعة = 11.53846 ÷ 9
+//  - حضور كل أيام العمل ثم: يوم 2 = غ، يوم 3 = ن ← الأيام المدفوعة 24.5 ← المستحق 282.69231
+//  - إضافي 2.30 يوم 02/11 = 2.5 × 1.5 × 11.53846/9 = 4.80769 (مع تنبيه: غائب في هذا اليوم)
 //  - مكافأة 20 يوم 12/11
-//  - تأخير 30 دقيقة يوم 15/11 = 30 × 10/9/60 = 0.55556 ، وسلفة 50 يوم 16/11
-//  الصافي = 285 + 4.16667 + 20 − 0.55556 − 50 = 258.611
+//  - تأخير 30 دقيقة يوم 15/11 = 30 × 11.53846/9/60 = 0.64103 ، وسلفة 50 يوم 16/11
+//  الصافي = 282.69231 + 4.80769 + 20 − 0.64103 − 50 = 256.859
 
 const CODE = "699001";
 const NAME = "موظف اختبار المسار";
@@ -91,7 +92,7 @@ test("المسار الكامل: موظف ← حضور ← إضافي وخصم �
   await otRow.getByLabel("البند").selectOption("ساعات إضافية");
   await otRow.getByLabel("الوقت الفعلي").fill("2.30");
   await otRow.getByLabel("الوقت الفعلي").blur();
-  await expect(otRow.getByTestId("entry-amount")).toHaveText("4.167");
+  await expect(otRow.getByTestId("entry-amount")).toHaveText("4.808");
   await expect(otRow.getByTestId("link-status")).toContainText(`✔ مربوط بـ ${NAME} — كشف 11/2026`);
   await expect(otRow.getByTestId("link-status")).toContainText("⚠ الموظف مسجّل غائب في هذا اليوم");
 
@@ -116,7 +117,7 @@ test("المسار الكامل: موظف ← حضور ← إضافي وخصم �
   await lateRow.getByLabel("البند").selectOption("تأخير");
   await lateRow.getByLabel("دقائق التأخير").fill("30");
   await lateRow.getByLabel("دقائق التأخير").blur();
-  await expect(lateRow.getByTestId("entry-amount")).toHaveText("0.556");
+  await expect(lateRow.getByTestId("entry-amount")).toHaveText("0.641");
 
   r = page.getByTestId("entry-draft");
   await pickDate(page, r, 16);
@@ -131,17 +132,27 @@ test("المسار الكامل: موظف ← حضور ← إضافي وخصم �
   // 5) الكشف الشهري
   await page.goto("/monthly?y=2026&m=11");
   const mrow = page.getByTestId(`monthly-row-${CODE}`);
-  await expect(mrow.getByTestId("net")).toHaveText("258.611");
+  await expect(mrow.getByTestId("net")).toHaveText("256.859");
 
   // 6) لوحة التحكم
   await page.goto("/?y=2026&m=11");
   const drow = page.getByTestId(`dash-row-${CODE}`);
-  await expect(drow.getByTestId("dash-net")).toHaveText("ر.ع. 258.611");
+  await expect(drow.getByTestId("dash-net")).toHaveText("ر.ع. 256.859");
   await drow.click();
-  await expect(page.getByTestId("card-الصافي المستحق")).toHaveText("ر.ع. 258.611");
+  await expect(page.getByTestId("card-الصافي المستحق")).toHaveText("ر.ع. 256.859");
   await expect(page.getByTestId("card-أيام الحضور")).toHaveText("24.5 يوم");
   // نسبة الحضور على أيام العمل: 24.5 / 26 = 94.2%
   await expect(page.getByTestId("card-نسبة الحضور")).toHaveText("94.2%");
+
+  // 7) العطلة الأسبوعية للموظف: الجمعة والسبت ← أيام العمل 22، والأجرة اليومية = 300 ÷ 22 = 13.63636
+  //    أيام السبت المسجّلة «ح» لا تُدفع أيامًا (عطلته)؛ المدفوع 20.5 (22 − غياب − نصف) ← 279.54545
+  //    إضافي 2.5 × 1.5 × 13.63636/9 = 5.68182 ، تأخير 0.5 × 13.63636/9 = 0.75758
+  //    الصافي = 279.54545 + 5.68182 + 20 − 0.75758 − 50 = 254.470
+  await page.goto("/employees");
+  await page.getByTestId(`emp-${CODE}`).getByLabel("weeklyOff").selectOption("5,6");
+  await expect(page.getByText(`✔ تم الحفظ — ${NAME}`)).toBeVisible();
+  await page.goto("/monthly?y=2026&m=11");
+  await expect(page.getByTestId(`monthly-row-${CODE}`).getByTestId("net")).toHaveText("254.470");
 });
 
 test("تصدير كل الجداول إلى Excel", async ({ page }) => {

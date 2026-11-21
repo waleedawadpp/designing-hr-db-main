@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { buildMonthlyReport, getSettings } from "@/lib/report";
 import { decorateDeductions, decorateExtras } from "@/lib/entries";
-import { countCodes, employeeStatus, formatDate, formatMonth, monthBounds } from "@/lib/payroll";
+import { WEEKLY_OFF_OPTIONS, countCodes, employeeStatus, formatDate, formatMonth, monthBounds } from "@/lib/payroll";
 import { currentMonthKey, todayISO } from "@/lib/utils";
 import { currentUser } from "@/lib/auth";
 
@@ -28,7 +28,7 @@ async function build(table: string, sp: URLSearchParams): Promise<Sheet> {
       const days = Array.from({ length: r.days }, (_, i) => String(i + 1));
       return {
         title: `الكشف الشهري ${formatMonth(ym)}`,
-        headers: ["الرقم", "الاسم", ...days, "أيام الحضور", "غياب", "نصف يوم", "إجازة", "مرضي", "النوع", "الراتب / الأجرة", "الأجرة اليومية", "خصم الغياب", "المستحق", "الإضافي", "المكافآت", "الخصومات والغرامات", "الصافي", "إجازات السنة", "المتبقي من الرصيد"],
+        headers: ["الرقم", "الاسم", ...days, "أيام الحضور", "غياب", "نصف يوم", "إجازة", "مرضي", "النوع", "الراتب / الأجرة", "الأجرة اليومية", "خصم الغياب / الأيام غير المدفوعة", "المستحق", "الإضافي", "المكافآت", "الخصومات والغرامات", "الصافي", "إجازات السنة", "المتبقي من الرصيد"],
         rows: r.rows.map((x) => [x.employee.code, x.employee.name, ...x.codesByDay.map((c) => c ?? ""), x.counts.present, x.counts.absent, x.counts.half, x.counts.leave, x.counts.sick, x.employee.type, x.salary, x.daily, x.absenceDeduction, x.due, x.overtime, x.bonuses, x.deductions, x.net, x.yearLeaves, x.leaveRemaining]),
         money: Array.from({ length: 8 }, (_, i) => 2 + r.days + 6 + i),
       };
@@ -63,8 +63,8 @@ async function build(table: string, sp: URLSearchParams): Promise<Sheet> {
       const today = todayISO();
       return {
         title: "بيانات الموظفين",
-        headers: ["الرقم", "الاسم", "النوع", "الراتب الشهري", "الأجرة اليومية", "ساعات الدوام اليومي", "تاريخ التعيين", "تاريخ انتهاء الخدمة", "إجازات مسحوبة قبل النظام", "رصيد الإجازة السنوي", "الحالة", "ملاحظات"],
-        rows: list.map((e) => [e.code, e.name, e.type, e.monthlySalary, e.dailyWage, e.dailyHours, formatDate(e.hireDate), formatDate(e.endDate), e.leavesBeforeSystem, e.annualLeave, employeeStatus(e, today), e.notes ?? ""]),
+        headers: ["الرقم", "الاسم", "النوع", "الراتب الشهري", "الأجرة اليومية", "ساعات الدوام اليومي", "تاريخ التعيين", "تاريخ انتهاء الخدمة", "إجازات مسحوبة قبل النظام", "رصيد الإجازة السنوي", "العطلة الأسبوعية", "الحالة", "ملاحظات"],
+        rows: list.map((e) => [e.code, e.name, e.type, e.monthlySalary, e.dailyWage, e.dailyHours, formatDate(e.hireDate), formatDate(e.endDate), e.leavesBeforeSystem, e.annualLeave, weeklyOffLabel(e.weeklyOff), employeeStatus(e, today), e.notes ?? ""]),
         money: [3, 4],
       };
     }
@@ -82,7 +82,7 @@ async function build(table: string, sp: URLSearchParams): Promise<Sheet> {
           money: [6, 7, 8],
         };
       }
-      const rows = await decorateDeductions(prisma, await prisma.deductionEntry.findMany(args));
+      const rows = await decorateDeductions(prisma, await prisma.deductionEntry.findMany(args), await getSettings(prisma));
       return {
         title: "سجل الخصم",
         headers: ["التاريخ", "الاسم", "البند", "دقائق التأخير", "تكلفة الدقيقة", "مبلغ الغرامة / الخصم", "المبلغ المخصوم", "الرقم", "ملاحظات", "حالة الربط"],
@@ -126,8 +126,8 @@ async function backupSheets(): Promise<Sheet[]> {
   return [
     {
       title: "الموظفون",
-      headers: ["id", "الرقم", "الاسم", "النوع", "الراتب الشهري", "الأجرة اليومية", "ساعات الدوام", "تاريخ التعيين", "تاريخ الانتهاء", "إجازات قبل النظام", "رصيد خاص", "ملاحظات"],
-      rows: emps.map((e) => [e.id, e.code, e.name, e.type, e.monthlySalary, e.dailyWage, e.dailyHours, e.hireDate, e.endDate, e.leavesBeforeSystem, e.annualLeave, e.notes]),
+      headers: ["id", "الرقم", "الاسم", "النوع", "الراتب الشهري", "الأجرة اليومية", "ساعات الدوام", "تاريخ التعيين", "تاريخ الانتهاء", "إجازات قبل النظام", "رصيد خاص", "العطلة الأسبوعية", "ملاحظات"],
+      rows: emps.map((e) => [e.id, e.code, e.name, e.type, e.monthlySalary, e.dailyWage, e.dailyHours, e.hireDate, e.endDate, e.leavesBeforeSystem, e.annualLeave, e.weeklyOff, e.notes]),
     },
     {
       title: "الحضور",
@@ -150,7 +150,14 @@ async function backupSheets(): Promise<Sheet[]> {
     },
     { title: "الأشهر المعتمدة", headers: ["الشهر", "وقت الاعتماد", "بواسطة", "اللقطة JSON"], rows: closes.map((c) => [c.month, iso(c.closedAt), c.closedBy, c.snapshot]) },
     { title: "المستخدمون", headers: ["البريد", "الاسم", "الصلاحية", "معطّل منذ"], rows: users.map((u) => [u.email, u.name, u.role, iso(u.disabledAt)]) },
-    { title: "الإعدادات", headers: ["رصيد الإجازة", "يوم العطلة", "سنة البداية"], rows: settings.map((x) => [x.annualLeaveEntitlement, x.weeklyOffDay, x.systemStartYear]) },
+    {
+      title: "الإعدادات",
+      headers: ["رصيد الإجازة", "يوم العطلة", "سنة البداية", "ساعات الدوام", "معدل الإضافي", "معدل العطلات", "خصم التأخير", "مهلة السماح", "الراتب حسب الأيام المدفوعة من"],
+      rows: settings.map((x) => [
+        x.annualLeaveEntitlement, x.weeklyOffDay, x.systemStartYear, x.standardHours, x.overtimeRate, x.holidayRate,
+        x.shortDeduction ? "مفعّل" : "متوقف", x.graceMinutes, x.payByAttendanceFrom ?? "",
+      ]),
+    },
     { title: "سجل التدقيق", headers: ["الوقت", "المستخدم", "العملية", "الجدول", "المعرّف", "الوصف"], rows: audits.map((a) => [iso(a.at), a.userEmail, a.action, a.entity, a.entityId, a.summary]) },
   ];
 }
@@ -163,6 +170,11 @@ async function send(wb: ExcelJS.Workbook, fileName: string) {
       "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
     },
   });
+}
+
+/** "5,6" ← «الجمعة والسبت»؛ فارغ ← «الافتراضي» */
+function weeklyOffLabel(v: string | null) {
+  return WEEKLY_OFF_OPTIONS.find((o) => o.value === v)?.label ?? (v ? v : "الافتراضي");
 }
 
 export async function GET(req: NextRequest) {

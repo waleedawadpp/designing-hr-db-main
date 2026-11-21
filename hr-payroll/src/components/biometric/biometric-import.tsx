@@ -4,7 +4,7 @@ import { useActionState, useMemo, useState, useTransition } from "react";
 import { CheckCircle2, Fingerprint, Upload } from "lucide-react";
 import { applyPunchLog, loadPunchLog, type ApplyResult, type LoadState } from "@/app/(app)/biometric/actions";
 import { planEmployee, selectedByDefault, type PlanCell } from "@/lib/biometric";
-import { CODES, formatDate, formatMonth, weekdayOf } from "@/lib/payroll";
+import { CODES, employeeOffDays, formatDate, formatMonth, weekdayOf } from "@/lib/payroll";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
@@ -52,7 +52,7 @@ function Preview({ state }: { state: Required<LoadState> }) {
         .filter((d) => mapping[d.deviceId])
         .map((d) => {
           const emp = empById.get(mapping[d.deviceId])!;
-          return { device: d, emp, cells: planEmployee(emp, d.days, current[emp.id] ?? {}, log.start, log.end, weeklyOffDay, holidaySet) };
+          return { device: d, emp, cells: planEmployee(emp, d.days, current[emp.id] ?? {}, log.start, log.end, employeeOffDays(emp, weeklyOffDay ?? 5), holidaySet) };
         }),
     [log, mapping, empById, current, weeklyOffDay, holidaySet],
   );

@@ -16,6 +16,8 @@ export interface GridRow {
   days: (string | null)[]; // 31
   notes: string;
   duplicate: boolean;
+  /** أيام العطلة الأسبوعية للموظف */
+  offDays: number[];
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -268,7 +270,7 @@ export function AttendanceGrid({
                     <td className="sticky right-0 z-[1] calc font-medium sm:right-[70px]" title={row.duplicate ? "سطر مكرر لنفس الموظف في نفس الشهر" : undefined}>{row.name}</td>
                     {row.days.map((code, c) => {
                       const locked = isLocked(row, c);
-                      const fri = !locked && (weekdayOf(`${row.month}-${pad2(c + 1)}`) === weeklyOffDay || holidays.includes(`${row.month}-${pad2(c + 1)}`));
+                      const fri = !locked && (row.offDays.includes(weekdayOf(`${row.month}-${pad2(c + 1)}`)) || holidays.includes(`${row.month}-${pad2(c + 1)}`));
                       return (
                         <td key={c} className={cn("!p-0 text-center", locked ? "c-out" : code ? `c-${code}` : fri ? "c-fri" : "")}>
                           {!locked && (

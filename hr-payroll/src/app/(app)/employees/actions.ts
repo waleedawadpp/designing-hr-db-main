@@ -3,7 +3,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { EMP_TYPES, isValidDate } from "@/lib/payroll";
+import { resyncOpenTimes } from "@/lib/time-sync";
+import { EMP_TYPES, WEEKLY_OFF_OPTIONS, isValidDate } from "@/lib/payroll";
 
 export interface EmployeeInput {
   code: string;
@@ -16,6 +17,8 @@ export interface EmployeeInput {
   endDate: string | null;
   leavesBeforeSystem: string;
   annualLeave: string;
+  /** "" = عطلة الإعدادات، "5" الجمعة، "5,6" الجمعة والسبت */
+  weeklyOff: string;
   notes: string;
 }
 
@@ -46,6 +49,8 @@ export async function saveEmployee(id: string | null, input: EmployeeInput): Pro
   if (hours === "bad" || hours === 0) errors.dailyHours = "رقم أكبر من صفر";
   if (before === "bad") errors.leavesBeforeSystem = "رقم غير صحيح";
   if (leave === "bad" || (typeof leave === "number" && (!Number.isInteger(leave) || leave > 365))) errors.annualLeave = "عدد أيام صحيح (0–365)";
+  const weeklyOff = (input.weeklyOff ?? "").trim();
+  if (weeklyOff && !WEEKLY_OFF_OPTIONS.some((o) => o.value === weeklyOff)) errors.weeklyOff = "اختر العطلة الأسبوعية";
   if (input.type === "موظف" && salary === null) errors.monthlySalary = "الراتب مطلوب للموظف";
   if (input.type === "سائق يومي" && wage === null) errors.dailyWage = "الأجرة اليومية مطلوبة للسائق";
   if (input.hireDate && !isValidDate(input.hireDate)) errors.hireDate = "تاريخ غير صحيح (من 01/01/2020)";
@@ -73,6 +78,7 @@ export async function saveEmployee(id: string | null, input: EmployeeInput): Pro
     endDate: input.endDate || null,
     leavesBeforeSystem: before as number | null,
     annualLeave: leave as number | null,
+    weeklyOff: weeklyOff || null,
     notes: input.notes.trim() || null,
   };
 
@@ -82,6 +88,8 @@ export async function saveEmployee(id: string | null, input: EmployeeInput): Pro
     await prisma.employee.update({ where: { id }, data });
     const changed = (Object.keys(data) as (keyof typeof data)[]).filter((k) => prev[k] !== data[k]);
     if (changed.length) await audit(user, "update", "Employee", id, `تعديل ${name}: ${changed.join("، ")}`, prev, data);
+    // العطلة الأسبوعية تغيّر الإضافي وخصم التأخير المحسوبين من أوقات الموظف (الأشهر غير المعتمدة)
+    if (changed.includes("weeklyOff")) await resyncOpenTimes(user, { employeeId: id });
     revalidatePath("/", "layout");
     return { ok: true, id };
   }

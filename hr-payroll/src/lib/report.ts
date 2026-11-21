@@ -23,6 +23,7 @@ export async function getSettings(db: PrismaClient): Promise<PayrollSettings> {
     holidayRate: s.holidayRate,
     shortDeduction: s.shortDeduction,
     graceMinutes: s.graceMinutes,
+    payByAttendanceFrom: s.payByAttendanceFrom || null,
   };
 }
 
@@ -120,6 +121,9 @@ export async function buildMonthlyReport(db: PrismaClient, ym: string, opts: { l
     const first = mrs[0];
     const codesByDay: (string | null)[] = Array.from({ length: days }, () => null);
     if (first) for (const d of first.days) if (d.day <= days) codesByDay[d.day - 1] = d.code || null;
+    // لحساب الأيام المدفوعة: رمز اليوم من أول سطر فيه رمز (إن تكرر سطر الموظف في الشهر)
+    const payCodes = [...codesByDay];
+    for (const mr of mrs.slice(1)) for (const d of mr.days) if (d.day <= days && !payCodes[d.day - 1] && d.code) payCodes[d.day - 1] = d.code;
 
     const row = computeMonthlyRow({
       employee: e,
@@ -130,6 +134,7 @@ export async function buildMonthlyReport(db: PrismaClient, ym: string, opts: { l
       leaveCountInYear: leavesByEmp.get(e.id) ?? 0,
       settings,
       holidays,
+      codesByDay: payCodes,
     });
     codesByDay.forEach((c, i) => {
       if (c === "ح") {

@@ -8,12 +8,18 @@ import { audit } from "./audit";
 import { setAttendanceCode } from "./attendance-write";
 import { assertMonthsOpen, closedMonths } from "./month-close";
 import { getHolidays, getSettings } from "./report";
-import { HOLIDAY_RATE_KIND, dayTime, deductibleShort, isDayOff, minutesToHM, parseClock, type PayrollSettings } from "./payroll";
+import { HOLIDAY_RATE_KIND, dayTime, deductibleShort, employeeOffDays, isDayOff, minutesToHM, parseClock, type PayrollSettings } from "./payroll";
 
 type User = { email: string };
 
 export const TIME_SOURCE_DEVICE = "بصمة";
 export const TIME_SOURCE_MANUAL = "يدوي";
+
+/** هل التاريخ عطلة للموظف: عطلته الأسبوعية (أو عطلة الإعدادات) أو إجازة رسمية. */
+async function employeeDayOff(employeeId: string, date: string, s: PayrollSettings, hol: Set<string>): Promise<boolean> {
+  const emp = await prisma.employee.findUnique({ where: { id: employeeId }, select: { weeklyOff: true } });
+  return isDayOff(date, employeeOffDays(emp, s.weeklyOffDay), hol);
+}
 
 function otNote(e: Pick<TimeEntry, "checkIn" | "checkOut">, holiday: boolean) {
   return `محسوب من الدوام: ${e.checkIn} – ${e.checkOut}${holiday ? " (يوم عطلة)" : ""}`;
@@ -23,7 +29,7 @@ function otNote(e: Pick<TimeEntry, "checkIn" | "checkOut">, holiday: boolean) {
 export async function syncOvertime(entry: TimeEntry, user: User, settings?: PayrollSettings, holidays?: Set<string>): Promise<boolean> {
   const s = settings ?? (await getSettings(prisma));
   const hol = holidays ?? (await getHolidays(prisma, entry.date, entry.date));
-  const holiday = isDayOff(entry.date, s.weeklyOffDay, hol);
+  const holiday = await employeeDayOff(entry.employeeId, entry.date, s, hol);
   const t = dayTime(entry.checkIn, entry.checkOut, holiday, s.standardHours);
   const existing = await prisma.extraEntry.findUnique({ where: { timeEntryId: entry.id } });
 
@@ -77,7 +83,7 @@ async function dayCode(employeeId: string, date: string): Promise<string | null>
 export async function syncShortDeduction(entry: TimeEntry, user: User, settings?: PayrollSettings, holidays?: Set<string>): Promise<boolean> {
   const s = settings ?? (await getSettings(prisma));
   const hol = holidays ?? (await getHolidays(prisma, entry.date, entry.date));
-  const holiday = isDayOff(entry.date, s.weeklyOffDay, hol);
+  const holiday = await employeeDayOff(entry.employeeId, entry.date, s, hol);
   const t = dayTime(entry.checkIn, entry.checkOut, holiday, s.standardHours);
   const short = t.short > 0 ? deductibleShort(t.short, s, await dayCode(entry.employeeId, entry.date)) : 0;
   const existing = await prisma.deductionEntry.findUnique({ where: { timeEntryId: entry.id } });
@@ -183,10 +189,13 @@ export async function saveTime(
 }
 
 /** يعيد حساب الإضافي وخصم النقص التلقائيين لكل أوقات الأشهر غير المعتمدة (بعد تغيير الإعدادات أو الإجازات). */
-export async function resyncOpenTimes(user: User, where: { date?: string; month?: string } = {}): Promise<number> {
+export async function resyncOpenTimes(user: User, where: { date?: string; month?: string; employeeId?: string } = {}): Promise<number> {
   const [closed, settings, holidays] = await Promise.all([closedMonths(prisma), getSettings(prisma), getHolidays(prisma)]);
   const entries = await prisma.timeEntry.findMany({
-    where: where.date ? { date: where.date } : where.month ? { date: { startsWith: `${where.month}-` } } : undefined,
+    where: {
+      ...(where.date ? { date: where.date } : where.month ? { date: { startsWith: `${where.month}-` } } : {}),
+      ...(where.employeeId ? { employeeId: where.employeeId } : {}),
+    },
   });
   let n = 0;
   for (const e of entries) {

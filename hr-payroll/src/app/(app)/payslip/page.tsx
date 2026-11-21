@@ -22,9 +22,10 @@ export default async function PayslipPage({ searchParams }: { searchParams: Prom
   const { start, end } = monthBounds(ym);
   const ids = rows.map((r) => r.employeeId);
   const where = { deletedAt: null, date: { gte: start, lte: end }, employeeId: { in: ids }, item: { not: null } };
+  const settings = await getSettings(prisma);
   const [extras, deductions] = await Promise.all([
-    decorateExtras(prisma, await prisma.extraEntry.findMany({ where, include: { employee: true }, orderBy: { date: "asc" } }), await getSettings(prisma)),
-    decorateDeductions(prisma, await prisma.deductionEntry.findMany({ where, include: { employee: true }, orderBy: { date: "asc" } })),
+    decorateExtras(prisma, await prisma.extraEntry.findMany({ where, include: { employee: true }, orderBy: { date: "asc" } }), settings),
+    decorateDeductions(prisma, await prisma.deductionEntry.findMany({ where, include: { employee: true }, orderBy: { date: "asc" } }), settings),
   ]);
 
   return (
@@ -100,7 +101,16 @@ function Payslip({
           <table className="w-full text-sm">
             <tbody>
               <Line label={driver ? "الأجرة المستحقة (أيام الحضور × الأجرة)" : "الراتب المستحق للشهر"} value={driver ? row.due : row.salary} />
-              {!driver && <Line label="خصم الغياب" value={-row.absenceDeduction} />}
+              {!driver && (
+                <Line
+                  label={
+                    row.workDays != null && row.paidDays != null
+                      ? `الأيام غير المدفوعة (مدفوع ${n1(row.paidDays)} من ${row.workDays} يوم عمل)`
+                      : "خصم الغياب"
+                  }
+                  value={-row.absenceDeduction}
+                />
+              )}
               {extras.map((x) => (
                 <Line key={x.id} label={`${x.item}${x.item === "ساعات إضافية" ? ` ${x.actualTime} س ×${x.rate}` : ""} — ${formatDate(x.date)}`} value={x.amount ?? 0} />
               ))}

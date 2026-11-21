@@ -23,6 +23,7 @@ export async function saveSettings(_: SettingsState, form: FormData): Promise<Se
   const holidayRate = Number(form.get("holidayRate"));
   const shortDeduction = form.get("shortDeduction") !== "0";
   const graceMinutes = Number(form.get("graceMinutes") ?? 15);
+  const payByAttendanceFrom = String(form.get("payByAttendanceFrom") ?? "").trim() || null;
   if (!Number.isInteger(annualLeaveEntitlement) || annualLeaveEntitlement < 0 || annualLeaveEntitlement > 365) return { error: "رصيد الإجازة بين 0 و 365 يومًا" };
   if (!Number.isInteger(weeklyOffDay) || weeklyOffDay < 0 || weeklyOffDay > 6) return { error: "يوم العطلة غير صحيح" };
   if (!Number.isInteger(systemStartYear) || systemStartYear < 2020 || systemStartYear > 2100) return { error: "سنة بداية النظام بين 2020 و 2100" };
@@ -31,8 +32,9 @@ export async function saveSettings(_: SettingsState, form: FormData): Promise<Se
   if (!(OVERTIME_RATES as readonly number[]).includes(overtimeRate)) return { error: "معدل الإضافي: 1.25 أو 1.5" };
   if (!(HOLIDAY_RATES as readonly number[]).includes(holidayRate)) return { error: "معدل العطلات: 1.25 أو 1.5 أو 2" };
   if (!Number.isInteger(graceMinutes) || graceMinutes < 0 || graceMinutes > 120) return { error: "مهلة السماح بين 0 و 120 دقيقة" };
+  if (payByAttendanceFrom && !/^20\d\d-(0[1-9]|1[0-2])$/.test(payByAttendanceFrom)) return { error: "شهر بداية حساب الراتب غير صحيح" };
   const before = await prisma.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
-  const data = { annualLeaveEntitlement, weeklyOffDay, systemStartYear, standardHours, overtimeRate, holidayRate, shortDeduction, graceMinutes };
+  const data = { annualLeaveEntitlement, weeklyOffDay, systemStartYear, standardHours, overtimeRate, holidayRate, shortDeduction, graceMinutes, payByAttendanceFrom };
   await prisma.settings.update({ where: { id: 1 }, data });
   await audit(user, "update", "Settings", "1", "تعديل الإعدادات", before, data);
   // ساعات الدوام ويوم العطلة وإعدادات الخصم تغيّر الإضافي والخصم المحسوبين من الأوقات (الأشهر غير المعتمدة فقط)

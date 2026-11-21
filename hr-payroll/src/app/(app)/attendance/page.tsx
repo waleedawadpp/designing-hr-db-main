@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { currentUser } from "@/lib/auth";
 import { getSettings } from "@/lib/report";
-import { isWorkingInMonth, formatMonth } from "@/lib/payroll";
+import { employeeOffDays, isWorkingInMonth, formatMonth } from "@/lib/payroll";
 import { AttendanceGrid, type GridRow } from "@/components/attendance/attendance-grid";
 import { ExportButtons } from "@/components/export-buttons";
 import { getNextMonth } from "./actions";
@@ -47,6 +47,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
       days,
       notes: r.notes ?? "",
       duplicate: (counts.get(`${r.employeeId}|${r.month}`) ?? 0) > 1,
+      offDays: employeeOffDays(r.employee, settings.weeklyOffDay),
     };
   });
 

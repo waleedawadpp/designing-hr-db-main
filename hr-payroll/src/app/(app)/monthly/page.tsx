@@ -3,7 +3,7 @@ import { MonthPicker } from "@/components/month-picker";
 import { ExportButtons } from "@/components/export-buttons";
 import { prisma } from "@/lib/db";
 import { buildMonthlyReport, getHolidays, sumRows } from "@/lib/report";
-import { ARABIC_WEEKDAYS_SHORT, fmtNumber3, format1, formatDate, formatMonth, pad2, weekdayOf } from "@/lib/payroll";
+import { ARABIC_WEEKDAYS_SHORT, employeeOffDays, fmtNumber3, format1, formatDate, formatMonth, isDayOff, pad2, weekdayOf } from "@/lib/payroll";
 import { monthFromParams } from "@/lib/utils";
 import { currentUser } from "@/lib/auth";
 import { MonthCloseBar } from "@/components/monthly/month-close-bar";
@@ -22,12 +22,18 @@ export default async function MonthlyPage({ searchParams }: { searchParams: Prom
   const negatives = r.rows.filter((x) => x.net < 0).length;
   const holidays = await getHolidays(prisma, r.start, r.end);
   const dayList = Array.from({ length: r.days }, (_, i) => i + 1);
+  // الحساب حسب الأيام المدفوعة (من شهر الإعدادات فما بعد)
+  const byAttendance = !!r.settings.payByAttendanceFrom && ym >= r.settings.payByAttendanceFrom;
 
   return (
     <div>
       <PageHeader
         title={`الكشف الشهري للحضور والرواتب | ${formatMonth(ym)}`}
-        hint="ح حاضر | غ غائب | إ إجازة | م مرضي | ن نصف يوم"
+        hint={
+          byAttendance
+            ? "ح حاضر | غ غائب | إ إجازة | م مرضي | ن نصف يوم • الراتب ÷ أيام العمل (عدا العطلة الأسبوعية للموظف) × الأيام المدفوعة (ح، إ، م، الإجازة الرسمية، ونصف يوم لـ ن) — الغياب والخانة الفارغة لا يُدفعان"
+            : "ح حاضر | غ غائب | إ إجازة | م مرضي | ن نصف يوم"
+        }
         actions={<ExportButtons table="monthly" params={{ ym }} printLabel="طباعة / PDF" />}
       />
       <div className="no-print mb-3 flex flex-wrap items-center gap-4 rounded-lg border border-line bg-white px-4 py-2">
@@ -68,7 +74,7 @@ export default async function MonthlyPage({ searchParams }: { searchParams: Prom
               <th className="col-type">النوع</th>
               <th className="th-total col-money">الراتب / الأجرة</th>
               <th className="th-total col-money">الأجرة اليومية</th>
-              <th className="th-red col-money">خصم الغياب</th>
+              <th className="th-red col-money">{byAttendance ? "الأيام غير المدفوعة" : "خصم الغياب"}</th>
               <th className="th-total col-money">المستحق</th>
               <th className="th-total col-money">الإضافي</th>
               <th className="th-green col-money">المكافآت</th>
@@ -88,7 +94,7 @@ export default async function MonthlyPage({ searchParams }: { searchParams: Prom
                   </Link>
                 </td>
                 {row.codesByDay.map((c, i) => {
-                  const fri = weekdayOf(`${ym}-${pad2(i + 1)}`) === r.settings.weeklyOffDay || holidays.has(`${ym}-${pad2(i + 1)}`);
+                  const fri = isDayOff(`${ym}-${pad2(i + 1)}`, employeeOffDays(row.employee, r.settings.weeklyOffDay), holidays);
                   return (
                     <td key={i} className={`!px-0 text-center ${c ? `c-${c}` : fri ? "c-fri" : ""}`}>
                       {c ?? ""}

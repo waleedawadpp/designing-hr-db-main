@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DateField } from "@/components/date-field";
-import { EMP_TYPES, employeeStatus } from "@/lib/payroll";
+import { ARABIC_WEEKDAYS, EMP_TYPES, WEEKLY_OFF_OPTIONS, employeeStatus } from "@/lib/payroll";
 import { saveEmployee, type EmployeeInput } from "@/app/(app)/employees/actions";
 import { cn } from "@/lib/utils";
 
@@ -13,14 +13,26 @@ const blank = (): Row => ({
   id: null,
   key: `new-${Math.random().toString(36).slice(2)}`,
   code: "", name: "", type: "", monthlySalary: "", dailyWage: "", dailyHours: "9",
-  hireDate: null, endDate: null, leavesBeforeSystem: "", annualLeave: "", notes: "",
+  hireDate: null, endDate: null, leavesBeforeSystem: "", annualLeave: "", weeklyOff: "", notes: "",
 });
 
 function isBlank(r: Row) {
   return !r.code && !r.name && !r.type && !r.monthlySalary && !r.dailyWage && !r.hireDate && !r.endDate && !r.leavesBeforeSystem && !r.annualLeave && !r.notes;
 }
 
-export function EmployeesTable({ rows: initial, canEdit, today, defaultLeave }: { rows: (EmployeeInput & { id: string })[]; canEdit: boolean; today: string; defaultLeave: number }) {
+export function EmployeesTable({
+  rows: initial,
+  canEdit,
+  today,
+  defaultLeave,
+  defaultOffDay,
+}: {
+  rows: (EmployeeInput & { id: string })[];
+  canEdit: boolean;
+  today: string;
+  defaultLeave: number;
+  defaultOffDay: number;
+}) {
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>(() => [...initial.map((r) => ({ ...r, key: r.id })), ...(canEdit ? [blank()] : [])]);
   const [errors, setErrors] = useState<Record<string, Errors>>({});
@@ -93,7 +105,7 @@ export function EmployeesTable({ rows: initial, canEdit, today, defaultLeave }: 
           <thead>
             <tr>
               <th>الرقم</th><th>الاسم</th><th>النوع</th><th>الراتب الشهري</th><th>الأجرة اليومية</th><th>ساعات الدوام اليومي</th>
-              <th>تاريخ التعيين</th><th>تاريخ انتهاء الخدمة</th><th>إجازات مسحوبة قبل النظام</th><th>رصيد الإجازة السنوي</th><th className="th-total">الحالة</th><th>ملاحظات</th>
+              <th>تاريخ التعيين</th><th>تاريخ انتهاء الخدمة</th><th>إجازات مسحوبة قبل النظام</th><th>رصيد الإجازة السنوي</th><th>العطلة الأسبوعية</th><th className="th-total">الحالة</th><th>ملاحظات</th>
             </tr>
           </thead>
           <tbody>
@@ -130,6 +142,21 @@ export function EmployeesTable({ rows: initial, canEdit, today, defaultLeave }: 
                   </td>
                   {cell(r, "leavesBeforeSystem", { num: true, width: "min-w-[80px]" })}
                   {cell(r, "annualLeave", { num: true, width: "min-w-[80px]", placeholder: `${defaultLeave} (الافتراضي)` })}
+                  <td className={cn("min-w-[130px] !py-0", err.weeklyOff && "!bg-[#FEE2E2]")}>
+                    <select
+                      aria-label="weeklyOff"
+                      className="inp py-1"
+                      value={r.weeklyOff}
+                      disabled={!canEdit}
+                      onChange={(e) => update(r.key, { weeklyOff: e.target.value }, true)}
+                    >
+                      <option value="">{ARABIC_WEEKDAYS[defaultOffDay]} (الافتراضي)</option>
+                      {WEEKLY_OFF_OPTIONS.filter((o) => o.value !== String(defaultOffDay)).map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                    {err.weeklyOff && <div className="text-[11px] text-[#B91C1C]">{err.weeklyOff}</div>}
+                  </td>
                   <td className={cn("calc", r.id && employeeStatus(r, today) === "انتهت الخدمة" && "!text-[#B91C1C]")}>
                     {r.name ? employeeStatus(r, today) : ""}
                   </td>

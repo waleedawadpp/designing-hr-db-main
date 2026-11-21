@@ -18,6 +18,7 @@ export interface BioEmployee {
   hireDate: string | null;
   endDate: string | null;
   deviceId: string | null;
+  weeklyOff: string | null;
 }
 
 export interface LoadState {
@@ -52,7 +53,7 @@ export async function loadPunchLog(_prev: LoadState, form: FormData): Promise<Lo
   const [employees, rows, settings, closed] = await Promise.all([
     prisma.employee.findMany({
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-      select: { id: true, code: true, name: true, hireDate: true, endDate: true, deviceId: true },
+      select: { id: true, code: true, name: true, hireDate: true, endDate: true, deviceId: true, weeklyOff: true },
     }),
     prisma.attendanceMonth.findMany({ where: { month: { in: months }, deletedAt: null, dupSeq: 0 }, include: { days: true } }),
     getSettings(prisma),

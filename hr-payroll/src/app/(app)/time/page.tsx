@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { currentUser } from "@/lib/auth";
 import { getHolidays, getSettings } from "@/lib/report";
 import { closedMonths } from "@/lib/month-close";
-import { ARABIC_WEEKDAYS, dayTime, formatMonth, isDayOff, isWorkingInMonth, monthBounds, pad2, weekdayOf } from "@/lib/payroll";
+import { ARABIC_WEEKDAYS, dayTime, employeeOffDays, formatMonth, isDayOff, isWorkingInMonth, monthBounds, pad2, weekdayOf } from "@/lib/payroll";
 import { monthFromParams } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { PayslipControls } from "@/components/payslip/payslip-controls";
@@ -40,7 +40,7 @@ export default async function TimePage({ searchParams }: { searchParams: Promise
   const header = (
     <PageHeader
       title={`الدوام والإضافي | ${formatMonth(ym)}`}
-      hint={`الدوام الرسمي ${std} يوميًا — ما بعدها إضافي بمعدل ${settings.overtimeRate} • العمل في يوم ${ARABIC_WEEKDAYS[settings.weeklyOffDay]} والإجازات الرسمية كله إضافي بمعدل ${settings.holidayRate} • ${
+      hint={`الدوام الرسمي ${std} يوميًا — ما بعدها إضافي بمعدل ${settings.overtimeRate} • العمل في العطلة الأسبوعية (${ARABIC_WEEKDAYS[settings.weeklyOffDay]} أو حسب الموظف) والإجازات الرسمية كله إضافي بمعدل ${settings.holidayRate} • ${
         settings.shortDeduction
           ? `النقص عن الدوام (تأخير أو خروج مبكر) يُخصم ساعة بساعة إذا تجاوز ${settings.graceMinutes} دقيقة`
           : "خصم النقص التلقائي متوقف من الإعدادات"
@@ -57,7 +57,7 @@ export default async function TimePage({ searchParams }: { searchParams: Promise
       let worked = 0, ot = 0, otHoliday = 0, short = 0, incomplete = 0, cut = 0;
       for (const t of mine) {
         cut += deducted.get(t.id) ?? 0;
-        const d = dayTime(t.checkIn, t.checkOut, isDayOff(t.date, settings.weeklyOffDay, holidaySet), settings.standardHours);
+        const d = dayTime(t.checkIn, t.checkOut, isDayOff(t.date, employeeOffDays(e, settings.weeklyOffDay), holidaySet), settings.standardHours);
         if (d.worked == null) {
           if (t.checkIn || t.checkOut) incomplete++;
           continue;
@@ -107,10 +107,11 @@ export default async function TimePage({ searchParams }: { searchParams: Promise
   }
 
   const byDate = new Map(entries.filter((t) => t.employeeId === empId).map((t) => [t.date, t]));
+  const offDays = employeeOffDays(employees.find((e) => e.id === empId), settings.weeklyOffDay);
   const rows: TimeRow[] = Array.from({ length: days }, (_, i) => {
     const date = `${ym}-${pad2(i + 1)}`;
     const t = byDate.get(date);
-    const off = isDayOff(date, settings.weeklyOffDay, holidaySet);
+    const off = isDayOff(date, offDays, holidaySet);
     return {
       date,
       weekday: ARABIC_WEEKDAYS[weekdayOf(date)],

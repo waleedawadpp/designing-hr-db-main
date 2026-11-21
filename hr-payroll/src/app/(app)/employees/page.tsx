@@ -23,6 +23,7 @@ export default async function EmployeesPage() {
         canEdit={user?.role === "admin"}
         today={todayISO()}
         defaultLeave={settings.annualLeaveEntitlement}
+        defaultOffDay={settings.weeklyOffDay}
         rows={list.map((e) => ({
           id: e.id,
           code: e.code,
@@ -35,6 +36,7 @@ export default async function EmployeesPage() {
           endDate: e.endDate,
           leavesBeforeSystem: e.leavesBeforeSystem?.toString() ?? "",
           annualLeave: e.annualLeave?.toString() ?? "",
+          weeklyOff: e.weeklyOff ?? "",
           notes: e.notes ?? "",
         }))}
       />

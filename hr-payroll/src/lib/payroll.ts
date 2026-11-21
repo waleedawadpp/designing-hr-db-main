@@ -35,6 +35,8 @@ export interface EmployeeLike {
   leavesBeforeSystem?: number | null;
   /** رصيد إجازة سنوي خاص بالموظف؛ فارغ = رصيد الإعدادات */
   annualLeave?: number | null;
+  /** أيام العطلة الأسبوعية للموظف ("5" أو "5,6")؛ فارغ = عطلة الإعدادات */
+  weeklyOff?: string | null;
 }
 
 export interface PayrollSettings {
@@ -51,6 +53,11 @@ export interface PayrollSettings {
   shortDeduction: boolean;
   /** مهلة السماح بالدقائق: النقص الذي لا يتجاوزها لا يُخصم */
   graceMinutes: number;
+  /**
+   * من هذا الشهر (YYYY-MM) يُحسب راتب الموظف الشهري حسب الأيام المدفوعة فعلًا:
+   * الراتب ÷ أيام العمل (أيام الشهر عدا عطلته الأسبوعية) × الأيام المدفوعة. فارغ = حساب الإكسل.
+   */
+  payByAttendanceFrom: string | null;
 }
 
 export const DEFAULT_SETTINGS: PayrollSettings = {
@@ -62,6 +69,7 @@ export const DEFAULT_SETTINGS: PayrollSettings = {
   holidayRate: 1.5,
   shortDeduction: true,
   graceMinutes: 15,
+  payByAttendanceFrom: null,
 };
 
 /** معدلات الإضافي المسموح بها في الإعدادات */
@@ -184,11 +192,52 @@ export interface MonthlyPay {
   activeDays: number;
   salary: number; // الراتب / الأجرة المعروض
   daily: number; // الأجرة اليومية
-  absenceDeduction: number;
+  absenceDeduction: number; // في الحساب الجديد: قيمة أيام العمل غير المدفوعة
   due: number; // المستحق
+  /** الحساب الجديد فقط: أيام العمل في الشهر (عدا العطلة الأسبوعية) والأيام المدفوعة */
+  workDays?: number;
+  paidDays?: number;
 }
 
-export function monthlyPay(emp: EmployeeLike, ym: string, counts: CodeCounts): MonthlyPay {
+export interface AttendancePayInput {
+  /** رمز كل يوم في الشهر (الفهرس = اليوم − 1) */
+  codesByDay: ReadonlyArray<string | null | undefined>;
+  /** أيام العطلة الأسبوعية للموظف */
+  offDays: readonly number[];
+  /** الإجازات الرسمية (مدفوعة) */
+  holidays?: ReadonlySet<string>;
+}
+
+/** رموز الأيام المدفوعة كاملة في الحساب الجديد: حاضر، إجازة، مرضي. «ن» نصف يوم. */
+export const PAID_DAY_CODES = ["ح", "إ", "م"] as const;
+
+/**
+ * الحساب حسب الأيام المدفوعة:
+ *  الأجرة اليومية = الراتب ÷ أيام العمل (أيام الشهر عدا العطلة الأسبوعية للموظف)
+ *  المستحق = الأجرة اليومية × الأيام المدفوعة؛ والمدفوع: ح و إ و م يوم، ن نصف يوم، والإجازة الرسمية الفارغة يوم.
+ *  الغياب والخانة الفارغة لا يُدفعان، وكذلك الأيام خارج فترة عمل الموظف.
+ */
+function payByAttendance(emp: EmployeeLike, ym: string, salary: number, act: number, a: AttendancePayInput): MonthlyPay {
+  const { days } = monthBounds(ym);
+  let workDays = 0, activeWork = 0, paid = 0;
+  for (let d = 1; d <= days; d++) {
+    const date = `${ym}-${pad2(d)}`;
+    if (a.offDays.includes(weekdayOf(date))) continue;
+    workDays++;
+    if ((emp.hireDate && date < emp.hireDate) || (emp.endDate && date > emp.endDate)) continue;
+    activeWork++;
+    const c = a.codesByDay[d - 1] || null;
+    if (c && (PAID_DAY_CODES as readonly string[]).includes(c)) paid += 1;
+    else if (c === "ن") paid += 0.5;
+    else if (!c && a.holidays?.has(date)) paid += 1;
+  }
+  const daily = workDays ? salary / workDays : 0;
+  const base = daily * activeWork;
+  const due = daily * paid;
+  return { days, activeDays: act, salary: base, daily, absenceDeduction: Math.max(base - due, 0), due, workDays, paidDays: paid };
+}
+
+export function monthlyPay(emp: EmployeeLike, ym: string, counts: CodeCounts, byAttendance?: AttendancePayInput | null): MonthlyPay {
   const { days } = monthBounds(ym);
   if (isDriver(emp)) {
     const daily = emp.dailyWage ?? 0;
@@ -203,6 +252,7 @@ export function monthlyPay(emp: EmployeeLike, ym: string, counts: CodeCounts): M
   }
   const salary = emp.monthlySalary ?? 0;
   const act = activeDays(emp, ym);
+  if (byAttendance) return payByAttendance(emp, ym, salary, act, byAttendance);
   const base = (salary * act) / days;
   const daily = salary / days;
   const absenceDeduction = (counts.absent + 0.5 * counts.half) * daily;
@@ -237,19 +287,50 @@ export function entryRate(entry: { rateKind?: string | null }, settings: Pick<Pa
   return entry.rateKind === HOLIDAY_RATE_KIND ? settings.holidayRate : settings.overtimeRate;
 }
 
-/** الأجرة اليومية في تاريخ السطر: أجرة السائق، أو الراتب ÷ أيام شهر التاريخ للموظف. */
-export function dailyOfDate(emp: EmployeeLike, date: string): number {
+type DaySettings = Pick<PayrollSettings, "weeklyOffDay" | "payByAttendanceFrom">;
+
+/** أيام العطلة الأسبوعية للموظف: من بياناته، وإلا عطلة الإعدادات. */
+export function employeeOffDays(emp: Pick<EmployeeLike, "weeklyOff"> | null | undefined, weeklyOffDay: number): number[] {
+  const own = parseWeeklyOff(emp?.weeklyOff);
+  return own.length ? own : [weeklyOffDay];
+}
+
+/** خيارات العطلة الأسبوعية في بيانات الموظف */
+export const WEEKLY_OFF_OPTIONS = [
+  { value: "5", label: "الجمعة" },
+  { value: "5,6", label: "الجمعة والسبت" },
+] as const;
+
+/** "5,6" ← [5, 6]؛ القيم غير الصحيحة تُتجاهل */
+export function parseWeeklyOff(v: string | null | undefined): number[] {
+  if (!v) return [];
+  return [...new Set(v.split(",").map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6))].sort();
+}
+
+/** هل يُحسب راتب هذا الشهر حسب الأيام المدفوعة (موظف شهري، والشهر من بداية الحساب الجديد فما بعد). */
+export function paysByAttendance(emp: EmployeeLike, ym: string, settings?: Partial<DaySettings> | null): boolean {
+  const from = settings?.payByAttendanceFrom;
+  return !!from && !isDriver(emp) && ym >= from;
+}
+
+/** الأجرة اليومية في تاريخ السطر: أجرة السائق، أو الراتب ÷ أيام شهر التاريخ (أو ÷ أيام العمل في الحساب الجديد). */
+export function dailyOfDate(emp: EmployeeLike, date: string, settings?: DaySettings | null): number {
   if (isDriver(emp)) return emp.dailyWage ?? 0;
+  const ym = date.slice(0, 7);
+  if (settings && paysByAttendance(emp, ym, settings)) {
+    const wd = workingDaysInMonth(ym, employeeOffDays(emp, settings.weeklyOffDay));
+    return wd ? (emp.monthlySalary ?? 0) / wd : 0;
+  }
   const [y, m] = date.split("-").map(Number);
   return (emp.monthlySalary ?? 0) / daysInMonth(y, m);
 }
 
-export function hourlyRate(emp: EmployeeLike, date: string): number {
-  return dailyOfDate(emp, date) / (emp.dailyHours || 9);
+export function hourlyRate(emp: EmployeeLike, date: string, settings?: DaySettings | null): number {
+  return dailyOfDate(emp, date, settings) / (emp.dailyHours || 9);
 }
 
-export function minuteCost(emp: EmployeeLike, date: string): number {
-  return hourlyRate(emp, date) / 60;
+export function minuteCost(emp: EmployeeLike, date: string, settings?: DaySettings | null): number {
+  return hourlyRate(emp, date, settings) / 60;
 }
 
 export interface ExtraLike {
@@ -270,12 +351,12 @@ export interface DeductionLike {
 export function extraAmount(
   entry: ExtraLike,
   emp: EmployeeLike | null | undefined,
-  settings: Pick<PayrollSettings, "overtimeRate" | "holidayRate"> = DEFAULT_SETTINGS,
+  settings: Pick<PayrollSettings, "overtimeRate" | "holidayRate"> & Partial<DaySettings> = DEFAULT_SETTINGS,
 ): number {
   if (!emp) return 0;
   if (entry.item === "مكافأة") return entry.bonusAmount ?? 0;
   if (!entry.date || entry.actualTime == null) return 0;
-  return otCountedHours(entry.actualTime, entryRate(entry, settings)) * hourlyRate(emp, entry.date);
+  return otCountedHours(entry.actualTime, entryRate(entry, settings)) * hourlyRate(emp, entry.date, daySettings(settings));
 }
 
 // ───────────────────────── أوقات الدوام (الدخول والخروج) ─────────────────────────
@@ -354,17 +435,23 @@ export function deductibleShort(
 }
 
 /** هل التاريخ يوم عطلة: العطلة الأسبوعية أو إجازة رسمية. */
-export function isDayOff(date: string, weeklyOffDay: number, holidays?: ReadonlySet<string>): boolean {
-  return weekdayOf(date) === weeklyOffDay || !!holidays?.has(date);
+export function isDayOff(date: string, weeklyOff: number | readonly number[], holidays?: ReadonlySet<string>): boolean {
+  const wd = weekdayOf(date);
+  return (typeof weeklyOff === "number" ? wd === weeklyOff : weeklyOff.includes(wd)) || !!holidays?.has(date);
 }
 
 // ───────────────────────── 3.6 الخصومات ─────────────────────────
 
-export function deductionAmount(entry: DeductionLike, emp: EmployeeLike | null | undefined): number {
+/** إعدادات الأيام إن وُجدت كاملة (للدوال التي تقبل إعدادات جزئية). */
+function daySettings(s: Partial<DaySettings> | null | undefined): DaySettings | null {
+  return s && typeof s.weeklyOffDay === "number" ? { weeklyOffDay: s.weeklyOffDay, payByAttendanceFrom: s.payByAttendanceFrom ?? null } : null;
+}
+
+export function deductionAmount(entry: DeductionLike, emp: EmployeeLike | null | undefined, settings?: Partial<DaySettings> | null): number {
   if (!emp) return 0;
   if (entry.item === "تأخير") {
     if (!entry.date) return 0;
-    return (entry.lateMinutes ?? 0) * minuteCost(emp, entry.date);
+    return (entry.lateMinutes ?? 0) * minuteCost(emp, entry.date, daySettings(settings));
   }
   return entry.amount ?? 0;
 }
@@ -424,14 +511,14 @@ export function remainingLeave(taken: number, settings: PayrollSettings, emp?: P
 // ───────────────────────── 3.9 نسبة الحضور (على أيام العمل بدون يوم العطلة) ─────────────────────────
 
 /** أيام العمل في الشهر: بدون العطلة الأسبوعية والإجازات الرسمية. */
-export function workingDaysInMonth(ym: string, weeklyOffDay: number, holidays?: ReadonlySet<string>): number {
+export function workingDaysInMonth(ym: string, weeklyOffDay: number | readonly number[], holidays?: ReadonlySet<string>): number {
   const { days } = monthBounds(ym);
   let n = 0;
   for (let d = 1; d <= days; d++) if (!isDayOff(`${ym}-${pad2(d)}`, weeklyOffDay, holidays)) n++;
   return n;
 }
 
-export function attendanceRate(presentDays: number, ym: string, weeklyOffDay: number, holidays?: ReadonlySet<string>): number {
+export function attendanceRate(presentDays: number, ym: string, weeklyOffDay: number | readonly number[], holidays?: ReadonlySet<string>): number {
   const wd = workingDaysInMonth(ym, weeklyOffDay, holidays);
   return wd ? presentDays / wd : 0;
 }
@@ -464,18 +551,24 @@ export interface MonthlyInput {
   settings?: PayrollSettings;
   /** الإجازات الرسمية (YYYY-MM-DD) — تُستبعد من أيام العمل */
   holidays?: ReadonlySet<string>;
+  /** رمز كل يوم (الفهرس = اليوم − 1) — يلزم لحساب الراتب حسب الأيام المدفوعة */
+  codesByDay?: ReadonlyArray<string | null | undefined>;
 }
 
 export function computeMonthlyRow(input: MonthlyInput): MonthlyRow {
   const settings = input.settings ?? DEFAULT_SETTINGS;
   const counts = countCodes(input.codes);
-  const pay = monthlyPay(input.employee, input.ym, counts);
+  const offDays = employeeOffDays(input.employee, settings.weeklyOffDay);
+  const byAtt = paysByAttendance(input.employee, input.ym, settings)
+    ? { codesByDay: input.codesByDay ?? [], offDays, holidays: input.holidays }
+    : null;
+  const pay = monthlyPay(input.employee, input.ym, counts, byAtt);
   let overtime = 0, bonuses = 0, deductions = 0;
   for (const x of input.extras) {
     if (x.item === "مكافأة") bonuses += extraAmount(x, input.employee, settings);
     else if (x.item === "ساعات إضافية") overtime += extraAmount(x, input.employee, settings);
   }
-  for (const d of input.deductions) deductions += deductionAmount(d, input.employee);
+  for (const d of input.deductions) deductions += deductionAmount(d, input.employee, settings);
   const { year } = parseMonthKey(input.ym);
   const yl = yearLeaves(input.leaveCountInYear, input.employee, year, settings);
   return {
@@ -486,8 +579,8 @@ export function computeMonthlyRow(input: MonthlyInput): MonthlyRow {
     bonuses,
     deductions,
     net: pay.due + overtime + bonuses - deductions,
-    workingDays: workingDaysInMonth(input.ym, settings.weeklyOffDay, input.holidays),
-    rate: attendanceRate(counts.present, input.ym, settings.weeklyOffDay, input.holidays),
+    workingDays: workingDaysInMonth(input.ym, offDays, input.holidays),
+    rate: attendanceRate(counts.present, input.ym, offDays, input.holidays),
     yearLeaves: yl,
     leaveRemaining: remainingLeave(yl, settings, input.employee),
   };

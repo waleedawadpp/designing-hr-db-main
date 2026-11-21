@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { setAttendanceCode } from "@/lib/attendance-write";
 import { resyncTimeDay } from "@/lib/time-sync";
-import { INVALID_CODE_MESSAGE, isValidCode, isWorkingInMonth, monthBounds, nextMonthKey, pad2, weekdayOf, activeDays, isDayOff } from "@/lib/payroll";
+import { INVALID_CODE_MESSAGE, isValidCode, isWorkingInMonth, monthBounds, nextMonthKey, pad2, weekdayOf, activeDays, isDayOff, employeeOffDays } from "@/lib/payroll";
 import { getHolidays, getSettings } from "@/lib/report";
 import { assertMonthsOpen, MonthClosedError } from "@/lib/month-close";
 import { currentMonthKey } from "@/lib/utils";
@@ -119,7 +119,7 @@ export async function fillEmployeePresent(monthId: string): Promise<Result & { c
   let changed = 0;
   for (let d = 1; d <= days; d++) {
     const date = `${r.month}-${pad2(d)}`;
-    if (isDayOff(date, settings.weeklyOffDay, holidays) || !inActiveRange(r.employee, date) || filled.get(d)) continue;
+    if (isDayOff(date, employeeOffDays(r.employee, settings.weeklyOffDay), holidays) || !inActiveRange(r.employee, date) || filled.get(d)) continue;
     if (await setCode(r.id, d, "ح", user)) changed++;
   }
   revalidatePath("/", "layout");

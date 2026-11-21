@@ -33,6 +33,7 @@ model Employee {
   endDate            String?
   leavesBeforeSystem Float?
   annualLeave        Int? // رصيد إجازة سنوي خاص بالموظف (فارغ = رصيد الإعدادات)
+  weeklyOff          String? // أيام العطلة الأسبوعية للموظف (أرقام الأيام 0=الأحد…6=السبت مفصولة بفاصلة، مثل "5" أو "5,6")؛ فارغ = عطلة الإعدادات
   deviceId           String?  @unique // رقم الموظف في جهاز البصمة (لاستيراد سجل الحركات)
   notes              String?
   sortOrder          Int      @default(0)
@@ -151,6 +152,7 @@ model Settings {
   holidayRate            Float @default(1.5) // معدل ساعات العمل في العطلة الأسبوعية والإجازات الرسمية
   shortDeduction         Boolean @default(true) // خصم التأخير/الخروج المبكر تلقائيًا (نقص عن ساعات الدوام)
   graceMinutes           Int   @default(15) // مهلة السماح: النقص الذي لا يتجاوزها لا يُخصم
+  payByAttendanceFrom    String? @default("2026-11") // من هذا الشهر (YYYY-MM): الراتب ÷ أيام العمل × الأيام المدفوعة؛ فارغ = حساب الإكسل
 }
 
 model AuditLog {

@@ -13,7 +13,7 @@
  *  - الخانة الفارغة تُعبّأ تلقائيًا؛ الخانة التي فيها رمز مختلف تُعرض «استبدالًا» غير محدد افتراضيًا.
  *  - الأيام خارج مدة خدمة الموظف أو خارج فترة التقرير لا تُمس.
  */
-import { pad2, weekdayOf } from "./payroll";
+import { isDayOff, pad2, weekdayOf } from "./payroll";
 
 export interface DevicePunches {
   deviceId: string;
@@ -147,7 +147,7 @@ export function planEmployee(
   current: Record<string, string | null | undefined>,
   start: string,
   end: string,
-  weeklyOffDay: number,
+  weeklyOffDay: number | readonly number[],
   holidays: ReadonlySet<string> = new Set(),
 ): PlanCell[] {
   return datesBetween(start, end).map((date) => {
@@ -155,7 +155,7 @@ export function planEmployee(
     const cur = current[date] ?? null;
     const base = { date, current: cur, times };
     if ((emp.hireDate && date < emp.hireDate) || (emp.endDate && date > emp.endDate)) return { ...base, proposed: null, kind: "inactive" };
-    const isOff = weekdayOf(date) === weeklyOffDay || holidays.has(date);
+    const isOff = isDayOff(date, weeklyOffDay, holidays);
     if (isOff && !times.length) return { ...base, proposed: null, kind: "off" };
     if (cur && (KEEP_ALWAYS.has(cur) || (cur === "ن" && times.length))) return { ...base, proposed: cur, kind: "kept" };
     if (isOff && cur) return { ...base, proposed: cur, kind: "kept" };
